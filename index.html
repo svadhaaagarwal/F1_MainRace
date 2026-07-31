@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Driver Programme — Final Assessment</title>
+<meta name="description" content="Project Driver 01 — Race Day." />
+
+<!-- ============================================================
+     PROJECT DRIVER 01 — SUNDAY (RACE DAY)
+     BUILD PHASE 01 · FOUNDATION
+     ------------------------------------------------------------
+     Scope of this phase:
+       • Repo + single-page shell (no reloads, no routing)
+       • Hardcoded canonical config: Red Bull Ring · Dry · Sunset
+       • Red Bull colour system (HARDCODED — single palette)
+       • Global STATE + Mission Controller skeleton (phase machine)
+       • Procedural Web Audio engine (boot / UI / engine / ambience)
+       • Asset Manager with exact-filename slots + graceful fallbacks
+       • Full Boot → System Restore → Ignition → Formation Countdown
+       • Live cockpit frame + HUD with power-on self-test
+     Driving arrives in PHASE 02.
+     ============================================================ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- Orbitron: motorsport / telemetry display face.  IBM Plex Mono: engineering data
+     (carried from Friday for trilogy continuity).  Cormorant Garamond: the "human"
+     register reserved for the reveal / love letter in later phases. -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+<style>
+/* ============================================================
+   DESIGN SYSTEM
+   ============================================================ */
+:root{
+  /* ---- Red Bull palette · HARDCODED · single source of truth ---- */
+  --rb-navy-950:#05070F;
+  --rb-navy-900:#0A1024;
+  --rb-navy-800:#0E1630;
+  --rb-navy-700:#141E43;
+  --rb-blue:#1E41FF;          /* primary racing accent */
+  --rb-blue-300:#5B7CFF;
+  --rb-red:#E10600;           /* F1 red · critical */
+  --rb-yellow:#FFC700;        /* Red Bull yellow */
+  --text:#EEF2F8;
+  --dim:#8A94A6;
+  --line:rgba(238,242,248,.09);
+  --line-bright:rgba(238,242,248,.22);
+  --ok:#39D98A;
+  --warn:#FFC700;
+  --err:#E10600;
+
+  /* Accent is neutral steel until the Team Skin resolves (Screen A06),
+     then locks to Red Bull blue for the remainder of the experience. */
+  --accent:#6B7681;
+  --accent-soft:rgba(107,118,129,.14);
+
+  /* ---- Sunset atmosphere (Red Bull Ring · Spielberg · golden hour) ---- */
+  --sky-1:#141634;   /* zenith indigo */
+  --sky-2:#3A2A63;   /* violet */
+  --sky-3:#8E3F63;   /* magenta */
+  --sky-4:#D96A44;   /* warm orange */
+  --sky-5:#F4B65B;   /* gold horizon */
+
+  /* ---- Typography ---- */
+  --f-display:'Orbitron',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;
+  --f-serif:'Cormorant Garamond',serif;
+
+  /* ---- Motion tokens (Motion Bible 05.07) ---- */
+  --t-xxs:100ms; --t-xs:180ms; --t-s:300ms; --t-m:450ms;
+  --t-l:700ms; --t-xl:1200ms; --t-xxl:2000ms;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;width:100%;overflow:hidden;background:#000;color:var(--text);
+  font-family:var(--f-mono);-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---- App frame & layered scene ---- */
+#app{position:fixed;inset:0;overflow:hidden;background:var(--rb-navy-950)}
+
+/* Scene layers stack: sky < hills < track < atmosphere < cockpit < hud < stage < gate */
+.layer{position:absolute;inset:0;pointer-events:none}
+
+/* SKY — sunset gradient */
+#sky{
+  background:
+    radial-gradient(120% 80% at 50% 118%, var(--sky-5) 0%, var(--sky-4) 16%, var(--sky-3) 38%, var(--sky-2) 66%, var(--sky-1) 100%);
+  opacity:0;transition:opacity var(--t-xxl) var(--ease);
+}
+#sky.on{opacity:1}
+/* sun glow low on the horizon */
+#sun{
+  position:absolute;left:50%;bottom:12%;width:46vmin;height:46vmin;transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,240,200,.95) 0%,rgba(255,205,120,.55) 34%,rgba(244,150,80,.18) 60%,transparent 72%);
+  filter:blur(2px);mix-blend-mode:screen;opacity:0;transition:opacity var(--t-xxl) var(--ease)
+}
+#sky.on #sun{opacity:1}
+
+/* HILLS — Styrian silhouettes */
+#hills{opacity:0;transition:opacity var(--t-xxl) var(--ease)}
+#hills.on{opacity:1}
+#hills svg{position:absolute;bottom:26%;left:0;width:100%;height:40%}
+
+/* TRACK — start/finish straight receding to horizon (static in Phase 1) */
+#track{opacity:0;transition:opacity var(--t-xl) var(--ease)}
+#track.on{opacity:1}
+.asphalt{
+  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  width:220%;height:34%;
+  background:linear-gradient(180deg,#20242e 0%,#171a22 60%,#0e1016 100%);
+  clip-path:polygon(43% 0,57% 0,100% 100%,0 100%);
+}
+.centerline{
+  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  width:0.7%;height:34%;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.85) 0 3%,transparent 3% 8%);
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%);opacity:.5
+}
+.kerb{position:absolute;bottom:0;height:34%;width:6%;
+  background:repeating-linear-gradient(180deg,var(--rb-red) 0 6%, #f2f2f2 6% 12%)}
+.kerb.l{left:50%;transform:translateX(-1550%) skewX(20deg);opacity:.55}
+.kerb.r{left:50%;transform:translateX(1450%) skewX(-20deg);opacity:.55}
+
+/* ATMOSPHERE — depth haze + top monitor vignette */
+#atmos{
+  background:
+    radial-gradient(130% 120% at 50% 44%, transparent 52%, rgba(3,4,10,.72) 100%),
+    linear-gradient(180deg, rgba(20,22,52,.35) 0%, transparent 30%);
+  mix-blend-mode:multiply;opacity:0;transition:opacity var(--t-xl) var(--ease)
+}
+#atmos.on{opacity:1}
+
+/* ============================================================
+   COCKPIT
+   ============================================================ */
+#cockpit{opacity:0;transition:opacity var(--t-l) var(--ease);z-index:20}
+#cockpit.on{opacity:1}
+/* subtle idle breathing applied to the whole cockpit group */
+#cockpit .rig{position:absolute;inset:0;transform:translateZ(0);will-change:transform}
+
+/* Halo device — thin arc across the top */
+.halo{position:absolute;top:0;left:0;width:100%;height:26%;pointer-events:none}
+.halo svg{width:100%;height:100%}
+
+/* A-pillars / cockpit sides darken the frame edges */
+.pillar{position:absolute;top:0;bottom:0;width:22%;
+  background:linear-gradient(90deg,rgba(4,5,12,.96),rgba(4,5,12,.35) 70%,transparent)}
+.pillar.l{left:0}
+.pillar.r{right:0;transform:scaleX(-1)}
+
+/* Steering wheel + mounted display fills the bottom */
+#wheel{position:absolute;left:50%;bottom:-8%;transform:translateX(-50%);
+  width:min(920px,92vw);height:52vh;pointer-events:none}
+#wheel svg{width:100%;height:100%;overflow:visible}
+
+/* ============================================================
+   HUD  (mounts on the wheel display + top banner)
+   ============================================================ */
+#hud{position:absolute;inset:0;z-index:30;pointer-events:none;opacity:0;transition:opacity var(--t-m) var(--ease)}
+#hud.on{opacity:1}
+.hud-el{opacity:0;transition:opacity var(--t-s) var(--ease)}
+.hud-el.lit{opacity:1}
+
+/* Mission Control banner — top centre */
+#mcBanner{
+  position:absolute;top:clamp(14px,3vh,34px);left:50%;transform:translateX(-50%) translateY(-12px);
+  min-width:280px;max-width:70vw;padding:10px 26px;text-align:center;
+  background:linear-gradient(180deg,rgba(10,16,36,.92),rgba(10,16,36,.66));
+  border:1px solid var(--line-bright);border-top:2px solid var(--accent);
+  transition:transform var(--t-s) var(--ease),opacity var(--t-s) var(--ease),border-color var(--t-l) var(--ease)
+}
+#mcBanner .lab{font-family:var(--f-mono);font-size:10px;letter-spacing:.32em;color:var(--dim);text-transform:uppercase}
+#mcBanner .val{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:clamp(13px,1.5vw,17px);text-transform:uppercase;margin-top:4px}
+#mcBanner.show{transform:translateX(-50%) translateY(0)}
+
+/* Radio indicator — top left */
+#radio{position:absolute;top:clamp(14px,3vh,34px);left:clamp(16px,3vw,40px);display:flex;align-items:center;gap:10px}
+#radioDot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+#radioDot.idle{animation:pulse 2.6s var(--ease) infinite}
+#radioDot.speaking{animation:pulse .7s var(--ease) infinite}
+#radio .rtxt{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.32;transform:scale(.82)}}
+
+/* Telemetry panel — top right */
+#telemetry{position:absolute;top:clamp(14px,3vh,34px);right:clamp(16px,3vw,40px);
+  display:grid;grid-template-columns:auto auto;gap:5px 16px;
+  padding:12px 16px;background:rgba(8,10,24,.6);border:1px solid var(--line);text-align:right}
+#telemetry .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:left}
+#telemetry .v{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--text)}
+
+/* Mini circuit — mid right */
+#miniCircuit{position:absolute;right:clamp(16px,3vw,40px);top:clamp(140px,22vh,190px);
+  width:132px;height:132px;padding:8px;background:rgba(8,10,24,.55);border:1px solid var(--line)}
+#miniCircuit svg{width:100%;height:100%}
+#miniCircuit .cap{position:absolute;bottom:-16px;left:0;right:0;text-align:center;
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+
+/* Notification stack — single message, above the wheel */
+#notify{position:absolute;left:50%;bottom:calc(52vh - 6px);transform:translateX(-50%) translateY(8px);
+  padding:8px 22px;background:rgba(10,16,36,.9);border:1px solid var(--accent);
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.22em;color:var(--text);text-transform:uppercase;
+  opacity:0;transition:opacity var(--t-xs) var(--ease),transform var(--t-xs) var(--ease);white-space:nowrap}
+#notify.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Speed cluster — mounted centre of the wheel display */
+#cluster{position:absolute;left:50%;bottom:clamp(70px,15vh,150px);transform:translateX(-50%);
+  width:min(560px,80vw);text-align:center}
+/* shift-light strip */
+#shift{display:flex;gap:5px;justify-content:center;margin-bottom:14px}
+#shift i{width:16px;height:7px;border-radius:1px;background:#1a2030;transition:background var(--t-xxs) linear,box-shadow var(--t-xxs) linear}
+#shift i.on.g{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#shift i.on.y{background:var(--rb-yellow);box-shadow:0 0 8px var(--rb-yellow)}
+#shift i.on.r{background:var(--rb-red);box-shadow:0 0 8px var(--rb-red)}
+#shift i.on.b{background:var(--rb-blue-300);box-shadow:0 0 10px var(--rb-blue)}
+/* speed + gear */
+#clusterRow{display:flex;align-items:baseline;justify-content:center;gap:22px}
+#speed{font-family:var(--f-display);font-weight:800;font-size:clamp(52px,11vw,104px);line-height:.9;letter-spacing:.01em}
+#speedUnit{font-family:var(--f-mono);font-size:12px;letter-spacing:.3em;color:var(--dim);margin-left:-10px}
+#gearWrap{display:flex;flex-direction:column;align-items:center}
+#gear{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,6vw,56px);color:var(--accent);line-height:1;transition:color var(--t-l) var(--ease)}
+#gearLab{font-family:var(--f-mono);font-size:9px;letter-spacing:.3em;color:var(--dim);margin-top:4px}
+#subRow{display:flex;justify-content:center;gap:26px;margin-top:12px}
+#subRow .cell{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+#subRow .cell b{color:var(--text);font-weight:600}
+#subRow .cell.drs{color:#3a4152}
+#subRow .cell.drs.on{color:var(--rb-blue-300);text-shadow:0 0 12px var(--rb-blue)}
+
+/* ============================================================
+   STAGE — full-screen narrative overlays (boot, brief, countdown)
+   ============================================================ */
+#stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+  padding:6vh 6vw;pointer-events:none}
+.screen{width:100%;max-width:960px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;gap:clamp(14px,2.6vh,28px)}
+.screen.left{align-items:flex-start;text-align:left}
+.fade-in{animation:fadein var(--t-l) var(--ease)}
+.fade-out{animation:fadeout var(--t-m) var(--ease) forwards}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes fadeout{to{opacity:0}}
+
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.36em;color:var(--dim);text-transform:uppercase}
+.mono{font-family:var(--f-mono);letter-spacing:.06em;color:var(--dim)}
+.mono .ok{color:var(--ok)}
+.title{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+  font-size:clamp(24px,5vw,54px);line-height:1.02}
+.subtitle{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.14em;font-size:clamp(15px,2vw,22px)}
+.caret::after{content:"▍";margin-left:2px;color:var(--accent);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* restore / loading list */
+.loadlist{display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;
+  font-family:var(--f-mono);font-size:13px;letter-spacing:.05em}
+.loadlist .li{display:flex;align-items:center;justify-content:space-between;gap:20px;color:var(--dim);
+  opacity:0;transform:translateY(5px);transition:opacity var(--t-s),transform var(--t-s)}
+.loadlist .li.in{opacity:1;transform:none}
+.loadlist .li.done{color:var(--text)}
+.loadlist .li .st{color:var(--ok);font-size:12px}
+/* stage-loading bar */
+.stagerow{display:flex;flex-direction:column;gap:8px;width:100%;max-width:440px;margin:0 auto;
+  opacity:0;transform:translateY(6px);transition:opacity var(--t-s),transform var(--t-s)}
+.stagerow.in{opacity:1;transform:none}
+.stagerow .top{display:flex;justify-content:space-between;font-family:var(--f-mono);
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.stagerow .top .name{color:var(--text)}
+.bar{height:5px;background:#141a2c;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--t-l) var(--ease),background var(--t-l) var(--ease)}
+
+/* mission brief panel */
+.brief{width:100%;max-width:680px;padding:clamp(20px,3vw,34px);
+  background:linear-gradient(180deg,rgba(10,16,36,.9),rgba(10,16,36,.55));
+  border:1px solid var(--line);border-left:2px solid var(--accent);text-align:left}
+.brief p{font-family:var(--f-mono);font-size:clamp(13px,1.3vw,15px);line-height:1.75;color:var(--text);min-height:1.7em}
+.brief p+p{margin-top:12px}
+.brief .spoke{color:var(--text)}
+
+/* countdown */
+#count{font-family:var(--f-display);font-weight:900;font-size:min(52vh,44vw);line-height:1;
+  color:var(--text);text-shadow:0 0 60px rgba(30,65,255,.5)}
+.count-label{font-family:var(--f-display);font-weight:700;letter-spacing:.3em;
+  font-size:clamp(18px,3vw,30px);color:var(--accent);text-transform:uppercase}
+.lights{display:flex;gap:clamp(10px,1.8vw,22px);justify-content:center;margin-top:8px}
+.lcol{display:flex;flex-direction:column;gap:8px}
+.light{width:clamp(26px,3.4vw,44px);height:clamp(26px,3.4vw,44px);border-radius:50%;
+  background:#1a0606;border:1px solid rgba(225,6,0,.22);transition:background var(--t-xxs),box-shadow var(--t-xxs)}
+.light.on{background:var(--rb-red);box-shadow:0 0 22px -2px var(--rb-red),inset 0 0 8px rgba(0,0,0,.4)}
+
+/* ============================================================
+   AUTHORISE GATE
+   ============================================================ */
+#gate{position:absolute;inset:0;z-index:60;background:var(--rb-navy-950);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:26px;
+  pointer-events:auto;transition:opacity var(--t-l) var(--ease)}
+#gate.hide{opacity:0;pointer-events:none}
+#gate .mark{font-family:var(--f-display);font-weight:700;letter-spacing:.34em;font-size:12px;color:var(--dim);text-transform:uppercase}
+#gate h1{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+  font-size:clamp(22px,4vw,42px);text-align:center;line-height:1.05}
+#gate p{font-family:var(--f-mono);font-size:13px;color:var(--dim);max-width:52ch;text-align:center;line-height:1.7}
+.btn{position:relative;font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+  padding:15px 40px;color:var(--text);border:1px solid var(--line-bright);
+  background:linear-gradient(180deg,rgba(30,65,255,.14),rgba(10,16,36,.6));
+  transition:border-color var(--t-s),box-shadow var(--t-m),transform var(--t-xxs);pointer-events:auto}
+.btn:hover{border-color:var(--rb-blue);box-shadow:0 0 0 1px rgba(30,65,255,.25),0 0 26px -6px var(--rb-blue)}
+.btn:active{transform:translateY(2px)}
+#gate .status{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
+
+/* build marker (dev/test deploys) — quiet, corner, non-intrusive */
+#build{position:absolute;left:10px;bottom:8px;z-index:70;font-family:var(--f-mono);
+  font-size:9px;letter-spacing:.2em;color:rgba(138,148,166,.4);text-transform:uppercase;pointer-events:none}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  #radioDot.idle,#radioDot.speaking,.caret::after{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ---- Scene ---- -->
+  <div id="sky" class="layer"><div id="sun"></div></div>
+
+  <div id="hills" class="layer">
+    <svg viewBox="0 0 1440 300" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,300 L0,150 L180,90 L360,140 L560,60 L760,150 L980,80 L1200,160 L1440,110 L1440,300 Z" fill="#241a3a" opacity="0.9"/>
+      <path d="M0,300 L0,200 L240,150 L520,200 L820,140 L1100,210 L1440,170 L1440,300 Z" fill="#171233" opacity="0.95"/>
+      <path d="M0,300 L0,250 L360,215 L760,255 L1140,220 L1440,250 L1440,300 Z" fill="#0c0a22"/>
+    </svg>
+  </div>
+
+  <div id="track" class="layer">
+    <div class="asphalt"></div>
+    <div class="kerb l"></div>
+    <div class="kerb r"></div>
+    <div class="centerline"></div>
+  </div>
+
+  <div id="atmos" class="layer"></div>
+
+  <!-- ---- Cockpit ---- -->
+  <div id="cockpit" class="layer">
+    <div class="rig">
+      <div class="halo">
+        <svg viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,0 L1440,0 L1440,40 C1080,40 1000,150 720,152 C440,150 360,40 0,40 Z" fill="rgba(4,5,12,.94)"/>
+          <path d="M720,150 C1000,148 1080,38 1440,38" fill="none" stroke="rgba(238,242,248,.10)" stroke-width="2"/>
+          <path d="M720,150 C440,148 360,38 0,38" fill="none" stroke="rgba(238,242,248,.10)" stroke-width="2"/>
+          <line x1="720" y1="152" x2="720" y2="200" stroke="rgba(4,5,12,.94)" stroke-width="26"/>
+        </svg>
+      </div>
+      <div class="pillar l"></div>
+      <div class="pillar r"></div>
+      <div id="wheel">
+        <svg viewBox="0 0 920 520" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <!-- wheel body -->
+          <path d="M120,520 L120,360 Q120,250 260,238 L360,232 Q460,224 560,232 L660,238 Q800,250 800,360 L800,520 Z"
+                fill="#0b0e1a" stroke="rgba(238,242,248,.10)" stroke-width="2"/>
+          <!-- central display bezel -->
+          <rect x="300" y="270" width="320" height="150" rx="8" fill="#05070f" stroke="rgba(238,242,248,.14)" stroke-width="2"/>
+          <!-- grips -->
+          <path d="M120,360 Q70,368 70,430 L70,520 L150,520 L150,372 Z" fill="#0e1120" stroke="rgba(238,242,248,.08)" stroke-width="2"/>
+          <path d="M800,360 Q850,368 850,430 L850,520 L770,520 L770,372 Z" fill="#0e1120" stroke="rgba(238,242,248,.08)" stroke-width="2"/>
+          <!-- accent rotary marks -->
+          <circle cx="220" cy="300" r="20" fill="#0e1120" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="700" cy="300" r="20" fill="#0e1120" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="196" y="360" width="48" height="16" rx="3" fill="#0e1120" stroke="rgba(238,242,248,.10)"/>
+          <rect x="676" y="360" width="48" height="16" rx="3" fill="#0e1120" stroke="rgba(238,242,248,.10)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- HUD ---- -->
+  <div id="hud">
+    <div id="radio" class="hud-el">
+      <span id="radioDot" class="idle"></span>
+      <span class="rtxt" id="radioTxt">Radio · Standby</span>
+    </div>
+
+    <div id="mcBanner" class="hud-el">
+      <div class="lab">Mission Control</div>
+      <div class="val" id="mcVal">Standby</div>
+    </div>
+
+    <div id="telemetry" class="hud-el">
+      <span class="k">Surface</span><span class="v num" id="tSurf">—</span>
+      <span class="k">Brake Bias</span><span class="v num" id="tBias">—</span>
+      <span class="k">Engine Mode</span><span class="v" id="tMode">—</span>
+      <span class="k">Signal</span><span class="v" id="tSig">—</span>
+      <span class="k">Archive</span><span class="v" id="tArch">—</span>
+    </div>
+
+    <div id="miniCircuit" class="hud-el">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <!-- stylised Red Bull Ring outline -->
+        <path id="rbRing" d="M20,78 L26,40 Q28,26 42,26 L58,26 Q70,26 70,36 L70,50 Q70,58 60,58 L44,58 Q36,58 40,66 L52,74 Q60,80 74,78 L84,76"
+              fill="none" stroke="rgba(238,242,248,.28)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle id="rbCar" cx="20" cy="78" r="3.6" fill="var(--accent)"/>
+      </svg>
+      <div class="cap">Red Bull Ring</div>
+    </div>
+
+    <div id="cluster" class="hud-el">
+      <div id="shift">
+        <i class="g"></i><i class="g"></i><i class="g"></i><i class="y"></i><i class="y"></i>
+        <i class="y"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="b"></i>
+        <i class="b"></i><i class="b"></i>
+      </div>
+      <div id="clusterRow">
+        <div><span id="speed" class="num">0</span><span id="speedUnit">KM/H</span></div>
+        <div id="gearWrap"><span id="gear">N</span><span id="gearLab">Gear</span></div>
+      </div>
+      <div id="subRow">
+        <span class="cell">RPM <b id="rpm" class="num">0</b></span>
+        <span class="cell drs" id="drsCell">DRS</span>
+        <span class="cell">ERS <b id="ers" class="num">100</b></span>
+        <span class="cell" id="sectorCell">FORMATION</span>
+      </div>
+    </div>
+
+    <div id="notify" class="hud-el"></div>
+  </div>
+
+  <!-- ---- Narrative stage ---- -->
+  <div id="stage"></div>
+
+  <!-- ---- Gate ---- -->
+  <div id="gate">
+    <div class="mark">Mission Control</div>
+    <h1>Driver Programme<br/>Final Assessment</h1>
+    <p>Encrypted uplink to the evaluation terminal is standing by. Authorise the connection to restore your session.</p>
+    <button class="btn" id="authBtn">Authorise Connection</button>
+    <div class="status" id="gateStatus">Status &nbsp;·&nbsp; Standby</div>
+  </div>
+
+  <div id="build">Project Driver 01 · Sunday · Build P1</div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   PROJECT DRIVER 01 — SUNDAY · BUILD PHASE 01
+   Single global runtime. No reloads, no routing.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   CONFIGURATION  (hardcoded canonical instance)
+   Fully independent of Friday/Saturday. Edit here to reconfigure.
+   ------------------------------------------------------------ */
+const CONFIG = {
+  event:       "Driver Evaluation Programme — Final Assessment",
+  circuit:     "Red Bull Ring",
+  location:    "Spielberg, Austria",
+  weather:     "Dry",          // Dry | Rain | Cloudy
+  timeOfDay:   "Sunset",       // Sunset (golden hour)
+  format:      "Single Flying Evaluation Lap",
+  driver:      "Driver 01",
+  coordinator: "Mission Control",
+  team:        "Red Bull Racing",   // accent locked to Red Bull palette
+  sectors:     3,
+  pitStops:    2,
+  /* Music map = MAP B (per build decision A1).
+     Files are USER-SUPPLIED. Missing files fall back gracefully to
+     procedural ambience — the experience always runs. */
+  music: {
+    formation: "assets/audio/music_formation_f1_theme.mp3", // Brian Tyler — F1 Theme (instrumental)
+    drs:       "assets/audio/music_drs_lose_my_mind.mp3",   // Don Toliver — Lose My Mind (instrumental)
+    final:     "assets/audio/music_final_surili.mp3"        // Surili Akhiyon Wale (instrumental)
+  }
+};
+
+/* ------------------------------------------------------------
+   ASSET MANIFEST — EXACT FILENAMES
+   Save your files under /assets using EXACTLY these names.
+   Anything missing is handled with an in-universe fallback.
+   ------------------------------------------------------------ */
+const ASSETS = {
+  audio: {
+    // Music (user-supplied / licensed)
+    "music_formation": "assets/audio/music_formation_f1_theme.mp3",
+    "music_drs":       "assets/audio/music_drs_lose_my_mind.mp3",
+    "music_final":     "assets/audio/music_final_surili.mp3",
+    // Personal voice (user-supplied) — used in later phases
+    "archive_01":      "assets/audio/archive_recording_01.mp3",
+    "archive_02":      "assets/audio/archive_recording_02.mp3"
+  },
+  video: {
+    "love_letter":     "assets/video/love_letter.mp4"
+  },
+  images: {
+    // Pit Stop One sliding puzzle
+    "puzzle_sliding":  "assets/images/puzzle_sliding.jpg",
+    // Pit Stop Two memory-correlation (6 photos ↔ 6 memories)
+    "memory_01":       "assets/images/memory_01.jpg",
+    "memory_02":       "assets/images/memory_02.jpg",
+    "memory_03":       "assets/images/memory_03.jpg",
+    "memory_04":       "assets/images/memory_04.jpg",
+    "memory_05":       "assets/images/memory_05.jpg",
+    "memory_06":       "assets/images/memory_06.jpg"
+  }
+};
+
+/* Memory labels are intentionally generic placeholders (per B5). */
+const MEMORY_LABELS = ["Memory 1","Memory 2","Memory 3","Memory 4","Memory 5","Memory 6"];
+
+/* ------------------------------------------------------------
+   GLOBAL STATE  (single source of truth)
+   ------------------------------------------------------------ */
+const STATE = {
+  phase:        "BOOT",
+  segment:      null,
+  speed:        0,       // internal 0..100
+  displaySpeed: 0,       // km/h shown
+  gear:         "N",
+  rpm:          0,       // 0..1
+  drs:          false,
+  sector:       "FORMATION",
+  playerControl:false,
+  audioReady:   false,
+  config:       CONFIG,
+  checkpoints:  [],
+  archives:     { rec01:false, rec02:false }
+};
+
+/* Phase machine — the canonical Sunday spine (two pit stops, three sectors). */
+const PHASES = [
+  "BOOT","SYSTEM_RESTORE","FORMATION_LAP","SECTOR_01","PITSTOP_01","SECTOR_02",
+  "PITSTOP_02","SECTOR_03","DRS_SEQUENCE","FINAL_STRAIGHT","FINISH_LINE",
+  "PODIUM","IDENTITY_REVEAL","LOVE_LETTER","MISSION_COMPLETE"
+];
+
+/* ------------------------------------------------------------
+   Save manager (Sunday-only; ?reset clears)
+   ------------------------------------------------------------ */
+const SAVE_KEY = "PROJECT_DRIVER_01_SUNDAY";
+const Save = {
+  write(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({
+    phase:STATE.phase, checkpoints:STATE.checkpoints, archives:STATE.archives
+  })); }catch(e){} },
+  read(){ try{ const r=localStorage.getItem(SAVE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } },
+  clear(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+};
+if (location.search.includes("reset")) Save.clear();
+
+/* ------------------------------------------------------------
+   Motion / timing helpers
+   ------------------------------------------------------------ */
+const RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const A  = RM ? 0.4 : 1;              // scale narrative pacing when reduced-motion
+const sleep = ms => new Promise(r => setTimeout(r, Math.max(0, Math.round(ms * A))));
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+
+const stage = $("#stage");
+const hud   = $("#hud");
+
+function mount(html, left){
+  stage.innerHTML = `<div class="screen ${left?'left':''} fade-in">${html}</div>`;
+  return $(".screen", stage);
+}
+async function clearStage(){
+  const s = $(".screen", stage);
+  if (s){ s.classList.add("fade-out"); await sleep(280); }
+  stage.innerHTML = "";
+}
+async function type(el, text, speed=30){
+  el.textContent = ""; el.classList.add("caret");
+  if (RM){ el.textContent = text; el.classList.remove("caret"); return; }
+  for (let i=0;i<text.length;i++){ el.textContent = text.slice(0,i+1); await sleep(speed); }
+  el.classList.remove("caret");
+}
+function setAccent(hex){
+  document.documentElement.style.setProperty("--accent", hex);
+}
+
+/* ============================================================
+   AUDIO ENGINE  — procedural Web Audio (diegetic).
+   All boot / UI / engine / ambience sounds are synthesised so the
+   experience "sounds alive" even with zero audio files present.
+   Music/voice slots load real files when supplied, else stay silent.
+   ============================================================ */
+const Audio_ = (() => {
+  let ctx=null, master=null, ambientGain=null, musicGain=null, noiseBuf=null;
+  let engine=null, started=false;
+  const buffers = {};   // decoded user-supplied files (by key)
+
+  function init(){
+    if (ctx) return;
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ return; }
+    master = ctx.createGain();  master.gain.value = 0.9; master.connect(ctx.destination);
+    ambientGain = ctx.createGain(); ambientGain.gain.value = 0; ambientGain.connect(master);
+    musicGain   = ctx.createGain(); musicGain.gain.value   = 0; musicGain.connect(master);
+    const len = ctx.sampleRate * 2;
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
+    STATE.audioReady = true;
+  }
+  function resume(){ if (ctx && ctx.state === "suspended") ctx.resume(); }
+
+  /* ---- primitive tones ---- */
+  function tone(freq,dur,type="sine",vol=0.14,attack=0.005){
+    if(!ctx) return;
+    const t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+attack);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
+  }
+  function beep(){ tone(880,0.12,"sine",0.10); }
+  function beepHi(){ tone(1240,0.09,"sine",0.09); }
+  function confirm(){ tone(660,0.14,"sine",0.09); setTimeout(()=>tone(990,0.2,"sine",0.08),90); }
+  function click(){
+    if(!ctx) return; const t=ctx.currentTime;
+    const s=ctx.createBufferSource(); s.buffer=noiseBuf;
+    const hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=1900;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.03);
+    s.connect(hp); hp.connect(g); g.connect(master); s.start(t); s.stop(t+0.05);
+  }
+  function data(){ tone(1400+Math.random()*500,0.03,"square",0.025); }
+  function lightTone(){ tone(300,0.16,"square",0.05); }
+  function warn(){ tone(150,0.4,"sine",0.14,0.01); }
+
+  /* ---- ambient engineering bed (computer hum + air) ---- */
+  function startAmbient(){
+    if(!ctx || started) return; started=true;
+    [50,100].forEach((f,i)=>{
+      const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=f;
+      const g=ctx.createGain(); g.gain.value = i===0?0.05:0.022;
+      o.connect(g); g.connect(ambientGain); o.start();
+    });
+    const s=ctx.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
+    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=620; bp.Q.value=0.6;
+    const g=ctx.createGain(); g.gain.value=0.014;
+    s.connect(bp); bp.connect(g); g.connect(ambientGain); s.start();
+    const t=ctx.currentTime;
+    ambientGain.gain.cancelScheduledValues(t);
+    ambientGain.gain.setValueAtTime(0,t);
+    ambientGain.gain.linearRampToValueAtTime(0.9,t+2.0);
+  }
+
+  /* ---- procedural engine (idle → rev, RPM-driven) ---- */
+  function startEngine(){
+    if(!ctx || engine) return;
+    const t=ctx.currentTime;
+    const out=ctx.createGain(); out.gain.value=0; out.connect(master);
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=420; lp.connect(out);
+    const oscs=[];
+    [0.5,1,2].forEach((mult,i)=>{
+      const o=ctx.createOscillator(); o.type = i===2?"square":"sawtooth";
+      o.frequency.value=46*mult;
+      const g=ctx.createGain(); g.gain.value = i===0?0.5:(i===1?0.32:0.12);
+      o.connect(g); g.connect(lp); o.start(); oscs.push(o);
+    });
+    // combustion texture
+    const ns=ctx.createBufferSource(); ns.buffer=noiseBuf; ns.loop=true;
+    const nbp=ctx.createBiquadFilter(); nbp.type="bandpass"; nbp.frequency.value=140; nbp.Q.value=1.1;
+    const ng=ctx.createGain(); ng.gain.value=0.05;
+    ns.connect(nbp); nbp.connect(ng); ng.connect(lp); ns.start();
+    // idle lump LFO
+    const lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=11;
+    const lfoG=ctx.createGain(); lfoG.gain.value=60; lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
+    out.gain.linearRampToValueAtTime(0.16, t+0.5);
+    engine = { out, lp, oscs, base:46 };
+  }
+  function setRPM(v){                 // v: 0..1
+    STATE.rpm = v;
+    if(!ctx || !engine) return;
+    const t=ctx.currentTime;
+    const f = engine.base * (1 + v*7.5);
+    engine.oscs.forEach((o,i)=>{
+      const mult=[0.5,1,2][i];
+      o.frequency.setTargetAtTime(f*mult, t, 0.05);
+    });
+    engine.lp.frequency.setTargetAtTime(420 + v*2600, t, 0.05);
+    engine.out.gain.setTargetAtTime(0.16 + v*0.14, t, 0.06);
+  }
+  function starter(){                 // brief crank before ignition
+    if(!ctx) return;
+    const t=ctx.currentTime;
+    const o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.setValueAtTime(28,t);
+    o.frequency.linearRampToValueAtTime(70,t+0.7);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.001,t);
+    g.gain.linearRampToValueAtTime(0.12,t+0.1); g.gain.linearRampToValueAtTime(0.02,t+0.75);
+    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=180;
+    o.connect(bp); bp.connect(g); g.connect(master); o.start(t); o.stop(t+0.8);
+  }
+  function rev(){                     // quick throttle blip
+    if(!engine) return;
+    setRPM(0.7); setTimeout(()=>setRPM(0.12), 380);
+  }
+
+  /* ---- music slot loader (graceful) ---- */
+  async function loadMusic(key, url){
+    if(!ctx || buffers[key]) return !!buffers[key];
+    try{
+      const r = await fetch(url); if(!r.ok) return false;
+      const ab = await r.arrayBuffer();
+      buffers[key] = await ctx.decodeAudioData(ab);
+      return true;
+    }catch(e){ return false; }
+  }
+  function hasMusic(key){ return !!buffers[key]; }
+  let musicSrc=null;
+  function playMusic(key, {loop=true, vol=0.5, fade=2.5}={}){
+    if(!ctx || !buffers[key]) return false;
+    stopMusic(0.4);
+    const s=ctx.createBufferSource(); s.buffer=buffers[key]; s.loop=loop;
+    s.connect(musicGain);
+    const t=ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(t);
+    musicGain.gain.setValueAtTime(musicGain.gain.value,t);
+    musicGain.gain.linearRampToValueAtTime(vol, t+fade);
+    s.start(); musicSrc=s; return true;
+  }
+  function stopMusic(fade=2){
+    if(!ctx || !musicSrc) return;
+    const t=ctx.currentTime, s=musicSrc; musicSrc=null;
+    musicGain.gain.cancelScheduledValues(t);
+    musicGain.gain.setValueAtTime(musicGain.gain.value,t);
+    musicGain.gain.linearRampToValueAtTime(0,t+fade);
+    try{ s.stop(t+fade+0.1); }catch(e){}
+  }
+
+  return { init,resume,startAmbient,startEngine,setRPM,starter,rev,
+           beep,beepHi,confirm,click,data,lightTone,warn,
+           loadMusic,hasMusic,playMusic,stopMusic };
+})();
+
+/* ============================================================
+   HUD controller (Phase-1 surface)
+   ============================================================ */
+const HUD = {
+  show(){ hud.classList.add("on"); },
+  light(sel){ const el=$(sel); if(el) el.classList.add("lit"); },
+  banner(text){ $("#mcVal").textContent = text; $("#mcBanner").classList.add("show"); },
+  radio(stateName, label){
+    const dot=$("#radioDot"); dot.className=""; dot.classList.add(stateName);
+    if(label) $("#radioTxt").textContent = label;
+  },
+  notify(text){
+    const n=$("#notify"); n.textContent=text; n.classList.add("show","lit");
+    clearTimeout(n._t); n._t=setTimeout(()=>n.classList.remove("show"), 2600);
+  },
+  telemetry(){
+    $("#tSurf").textContent = "41°C";
+    $("#tBias").textContent = "54.5%";
+    $("#tMode").textContent = "STANDARD";
+    $("#tSig").textContent  = "STRONG";
+    $("#tArch").textContent = "STABLE";
+  },
+  setSpeed(kmh){ $("#speed").textContent = Math.round(kmh); STATE.displaySpeed=kmh; },
+  setGear(g){ $("#gear").textContent = g; STATE.gear=g; },
+  setRPMbar(v){                       // v 0..1 drives shift lights
+    const lights=$$("#shift i"), n=Math.round(v*lights.length);
+    lights.forEach((el,i)=> el.classList.toggle("on", i<n));
+    $("#rpm").textContent = Math.round(v*15000);
+  },
+  sector(name){ $("#sectorCell").textContent=name; STATE.sector=name; }
+};
+
+/* idle cockpit "breathing" — the rig is never perfectly static (RULE 019) */
+let breatheRAF=null;
+function startBreathing(){
+  if(RM) return;
+  const rig=$("#cockpit .rig"); if(!rig) return;
+  const t0=performance.now();
+  (function loop(now){
+    const t=(now-t0)/1000;
+    const amp = 0.7 + STATE.rpm*2.2;              // vibration grows with RPM
+    const x=Math.sin(t*2.1)*amp*0.4, y=Math.cos(t*3.3)*amp*0.5;
+    rig.style.transform=`translate(${x}px,${y}px)`;
+    breatheRAF=requestAnimationFrame(loop);
+  })(t0);
+}
+
+/* ============================================================
+   BOOT / SYSTEM RESTORE SEQUENCE  (Phase A — Screens A01–A10)
+   ============================================================ */
+async function runBoot(){
+
+  /* A01 — black screen, hum fades in */
+  STATE.phase="SYSTEM_RESTORE";
+  Audio_.startAmbient();
+  await sleep(2600);
+
+  /* A02 — Mission Control boots */
+  let s = mount(`<div class="mono" id="l1" style="font-size:14px"></div>
+                 <div class="mono" id="l2" style="font-size:13px"></div>`);
+  Audio_.click();
+  await type($("#l1",s), "MISSION SAVE DETECTED", 34);
+  await sleep(400); Audio_.data();
+  await type($("#l2",s), "VERIFYING…", 34);
+  await sleep(900);
+
+  /* A03 — restore lines */
+  await clearStage();
+  s = mount(`<div class="eyebrow">System Restore</div><div class="loadlist" id="ll"></div>`);
+  const restore = ["RESTORING DRIVER PROFILE","RESTORING TELEMETRY","RESTORING ARCHIVE","RESTORING CALIBRATION"];
+  const ll=$("#ll",s);
+  for (const label of restore){
+    const row=document.createElement("div"); row.className="li";
+    row.innerHTML=`<span>${label}</span><span class="st"></span>`; ll.appendChild(row);
+    requestAnimationFrame(()=>row.classList.add("in"));
+    Audio_.data(); await sleep(520);
+    row.querySelector(".st").textContent="✓"; row.classList.add("done"); Audio_.beepHi();
+    await sleep(260);
+  }
+  await sleep(700);
+
+  /* A04 — driver recognition */
+  await clearStage();
+  s = mount(`<div class="eyebrow">Profile Found</div>
+             <div class="title" style="font-size:clamp(30px,6vw,64px)">DRIVER 01</div>
+             <div class="mono ok" style="font-size:13px">STATUS · VERIFIED</div>`);
+  Audio_.confirm();
+  await sleep(2000);
+  await clearStage();
+  s = mount(`<div class="mono caret" id="l" style="font-size:14px"></div>`);
+  await type($("#l",s), "LOADING RACE DAY…", 30);
+  await sleep(700);
+
+  /* A05 — track loading (engineering stages, not %) */
+  await clearStage();
+  s = mount(`<div class="eyebrow">Loading Circuit Environment</div>
+             <div style="display:flex;flex-direction:column;gap:18px;width:100%;max-width:440px" id="stages"></div>`);
+  const stages=[["TRACK GEOMETRY","Red Bull Ring · Spielberg"],["WEATHER","Dry · Sunset"],
+                ["VEHICLE","RB · Power Unit"],["HUD","Cockpit Display"],["MISSION CONTROL","Uplink"]];
+  const host=$("#stages",s);
+  for (const [name,detail] of stages){
+    const row=document.createElement("div"); row.className="stagerow";
+    row.innerHTML=`<div class="top"><span class="name">${name}</span><span>${detail}</span></div>
+                   <div class="bar"><i></i></div>`;
+    host.appendChild(row); requestAnimationFrame(()=>row.classList.add("in"));
+    Audio_.click(); await sleep(120);
+    row.querySelector("i").style.width="100%";
+    await sleep(560); Audio_.beepHi();
+    row.querySelector(".top span:last-child").innerHTML=`<span class="ok" style="color:var(--ok)">Loaded</span>`;
+    await sleep(200);
+  }
+  await sleep(600);
+
+  /* A06 — team skin: accent resolves to Red Bull */
+  await clearStage();
+  s = mount(`<div class="eyebrow" id="tp">Team Profile Detected</div>
+             <div class="subtitle" id="tn">Loading Team Environment…</div>`);
+  await sleep(900);
+  // reveal the sunset scene + resolve accent to Red Bull blue
+  $("#sky").classList.add("on");
+  $("#hills").classList.add("on");
+  await sleep(400);
+  setAccent("#1E41FF");                          // Red Bull — hardcoded team
+  Audio_.confirm();
+  $("#tn",s).textContent = "RED BULL RACING";
+  $("#tn",s).style.color = "var(--rb-blue-300)";
+  await sleep(1400);
+
+  /* A07 — mission brief (first spoken dialogue) */
+  await clearStage();
+  $("#track").classList.add("on");
+  $("#atmos").classList.add("on");
+  s = mount(`<div class="eyebrow">Mission Brief</div>
+             <div class="brief">
+               <p id="b1"></p><p id="b2"></p><p id="b3"></p><p id="b4"></p>
+             </div>`, true);
+  HUD.radio("speaking","Radio · Incoming");
+  await type($("#b1",s), "Driver 01. Final evaluation authorised.", 26);
+  await sleep(300);
+  await type($("#b2",s), "One lap. Three sectors. Two pit stops.", 26);
+  await sleep(300);
+  await type($("#b3",s), "This is the last assessment. Finish the race.", 26);
+  await sleep(400);
+  await type($("#b4",s), "Proceed to formation lap.", 26);
+  HUD.radio("idle","Radio · Standby");
+  await sleep(1100);
+
+  /* A08 — cockpit fade-in + HUD power-on self-test */
+  await clearStage();
+  $("#cockpit").classList.add("on");
+  startBreathing();
+  await sleep(600);
+  HUD.show();
+  // sequential module illumination (Motion Bible: never all at once)
+  const seq=[
+    ["#telemetry", ()=>HUD.telemetry()],
+    ["#cluster",   ()=>{ selfTestCluster(); }],
+    ["#radio",     ()=>HUD.radio("idle","Radio · Standby")],
+    ["#miniCircuit", ()=>{}],
+    ["#mcBanner",  ()=>HUD.banner("Formation Lap")]
+  ];
+  for (const [sel,fn] of seq){ HUD.light(sel); Audio_.beepHi(); fn(); await sleep(420); }
+  await sleep(700);
+
+  /* A09 — engine ignition */
+  s = mount(`<div class="mono" id="ig" style="font-size:14px"></div>`);
+  HUD.radio("speaking","Radio · Incoming");
+  await type($("#ig",s), "Ignition.", 40);
+  HUD.radio("idle","Radio · Standby");
+  Audio_.starter();
+  await sleep(800);
+  Audio_.startEngine();
+  Audio_.setRPM(0.12);
+  HUD.setGear("N"); HUD.setRPMbar(0.12); HUD.setSpeed(0);
+  await clearStage();
+  await sleep(900);
+
+  /* A10 — formation lap countdown */
+  s = mount(`<div class="count-label">Formation Lap</div>
+             <div class="lights" id="lights"></div>
+             <div id="count" class="num" style="opacity:0"></div>`);
+  const L=$("#lights",s); const cols=[];
+  for(let i=0;i<5;i++){ const c=document.createElement("div"); c.className="lcol";
+    c.innerHTML=`<div class="light"></div><div class="light"></div>`; L.appendChild(c); cols.push(c); }
+  await sleep(500);
+  for(let i=0;i<5;i++){ cols[i].querySelectorAll(".light").forEach(x=>x.classList.add("on"));
+    Audio_.lightTone(); await sleep(360); }
+  await sleep(500);
+  const cEl=$("#count",s); cEl.style.opacity="1";
+  for (const n of ["3","2","1"]){
+    cEl.textContent=n; Audio_.beep();
+    if(n==="1"){ Audio_.rev(); }
+    await sleep(760);
+  }
+  // lights out → GO
+  L.querySelectorAll(".light").forEach(x=>x.classList.remove("on"));
+  cEl.textContent="GO"; cEl.style.color="var(--rb-blue-300)";
+  Audio_.beepHi();
+  // Map B: F1 Theme begins on the formation lap (if the file is present)
+  if (Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:0.42,fade:3});
+  await sleep(900);
+
+  /* Phase-1 boundary: hand control to the (future) Driving Engine. */
+  await enterFormationHold();
+}
+
+/* HUD speed cluster self-test: sweep RPM + speed once */
+function selfTestCluster(){
+  let v=0; const up=setInterval(()=>{ v+=0.09; HUD.setRPMbar(Math.min(1,v));
+    HUD.setSpeed(Math.min(340, v*340));
+    if(v>=1){ clearInterval(up); const dn=setInterval(()=>{ v-=0.12; HUD.setRPMbar(Math.max(0,v));
+      HUD.setSpeed(Math.max(0,v*340)); if(v<=0){ clearInterval(dn); HUD.setRPMbar(0.12); HUD.setSpeed(0);} },40); }
+  },40);
+}
+
+/* ------------------------------------------------------------
+   Formation hold — graceful end-of-Phase-1 state.
+   Cockpit is live and idling on the grid; driving arrives in Phase 2.
+   ------------------------------------------------------------ */
+async function enterFormationHold(){
+  STATE.phase="FORMATION_LAP";
+  STATE.playerControl=false;
+  HUD.banner("Formation Lap");
+  HUD.sector("FORMATION");
+  HUD.setGear("1");
+  Audio_.setRPM(0.18); HUD.setRPMbar(0.18);
+  HUD.notify("SYSTEMS ONLINE");
+  Save.write();
+  await sleep(600);
+  // in-universe standby (no immersion break)
+  mount(`<div class="eyebrow" style="opacity:.8">Standing By</div>
+         <div class="subtitle" style="letter-spacing:.16em">Formation Lap · Grid Armed</div>
+         <div class="mono" style="font-size:12px;color:var(--dim)">Awaiting green · Driving Engine online in Phase 02</div>`);
+  // gentle idle pulse on the mini-circuit car marker
+  const car=$("#rbCar"); let t0=performance.now();
+  (function pulse(now){ if(!car) return; const o=0.6+0.4*Math.sin((now-t0)/500);
+    car.setAttribute("opacity", o.toFixed(2)); requestAnimationFrame(pulse); })(t0);
+}
+
+/* ============================================================
+   GATE → BOOT   (audio unlock requires a user gesture)
+   ============================================================ */
+$("#authBtn").addEventListener("click", async () => {
+  const gate=$("#gate");
+  $("#gateStatus").textContent = "Status · Connecting";
+  Audio_.init(); Audio_.resume(); Audio_.confirm();
+  // preload the formation music slot in the background (no-op if absent)
+  Audio_.loadMusic("music_formation", ASSETS.audio.music_formation);
+  gate.classList.add("hide");
+  await sleep(760);
+  gate.style.display="none";
+  runBoot();
+});
+
+/* Enter acts as a keyboard alias for the primary on-screen action. */
+window.addEventListener("keydown", (e)=>{
+  if (e.code==="Enter" && !$("#gate").classList.contains("hide")){ $("#authBtn").click(); }
+});
+</script>
+</body>
+</html>
