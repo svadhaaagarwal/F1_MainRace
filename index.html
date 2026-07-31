@@ -128,7 +128,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 #telemetry .k{font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:left}
 #telemetry .v{font-family:var(--f-mono);font-size:11px;color:var(--text)}
 
-#miniCircuit{display:none;position:absolute;right:clamp(16px,3vw,38px);top:clamp(132px,21vh,182px);
+#miniCircuit{position:absolute;right:clamp(16px,3vw,38px);top:clamp(132px,21vh,182px);
   width:128px;height:128px;padding:8px;background:rgba(8,10,24,.52);border:1px solid var(--line)}
 #miniCircuit svg{width:100%;height:100%}
 #miniCircuit .cap{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
@@ -785,6 +785,8 @@ const Drive=(()=>{
 
   async function enterInstinct(){
     // pause the car mid-track and take everything away
+    const miniCircuit = $("#miniCircuit"); if(miniCircuit) miniCircuit.style.display="none";
+    if(rival) rival.active=false; rival=null;
     running=false; STATE.playerControl=false; throttle=false;
     Audio_.engineDuck(0.08);
     // blackout in
@@ -826,8 +828,10 @@ const Drive=(()=>{
     HUD.radio("speaking","Radio · Incoming");
     HUD.corner("DRS","HOLD SPACE — TAKE IT");          // bold centre prompt
     setTimeout(()=>{ HUD.radio("idle","Radio · Standby"); if(STATE._instinct) HUD.corner(null); }, 2600);
-    // spawn rival ahead
-    rival={z:pos+14*SEGLEN, x:0.35, active:true};
+    if(!STATE._instinct){
+      // spawn rival ahead
+      rival={z:pos+14*SEGLEN, x:0.35, active:true};
+    }
     STATE._drsArmed=true;
   }
 
