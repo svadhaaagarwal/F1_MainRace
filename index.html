@@ -233,6 +233,11 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 /* archive playback */
 .archive-photo{height:min(40vh,380px);aspect-ratio:9/16;background:#05070f center/contain no-repeat;border:1px solid var(--line-bright);position:relative;overflow:hidden}
 .archive-photo.zoom{animation:slowzoom 20s linear forwards}
+.slide-grid.completed{box-shadow:0 0 40px rgba(57,217,138,.25);border-color:rgba(57,217,138,.38)}
+.slide-grid.solved{gap:0;box-shadow:0 0 30px rgba(57,217,138,.18)}
+.slots.completed{box-shadow:0 0 38px rgba(57,217,138,.22);}
+.hint-note{display:block;font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:.18em;}
+.pit-btn{font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;padding:13px 34px;color:var(--text);border:1px solid var(--rb-blue);background:linear-gradient(180deg,rgba(30,65,255,.16),rgba(10,16,36,.6));pointer-events:auto;transition:box-shadow var(--t-m),transform var(--t-xxs);touch-action:manipulation;}
 @keyframes slowzoom{to{transform:scale(1.035)}}
 .archive-caption{font-family:var(--f-serif);font-size:clamp(18px,2.4vw,26px);line-height:1.5;color:#F4E9D8;max-width:44ch;text-align:center;font-style:italic}
 .wave{display:flex;align-items:center;gap:3px;height:26px}
@@ -316,6 +321,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 #blackout{position:absolute;inset:0;z-index:52;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .8s var(--ease)}
 #blackout.on{opacity:1;pointer-events:auto}
 #blackoutText{display:flex;flex-direction:column;gap:15px;text-align:center;max-width:62ch;padding:0 6vw}
+.instinctBadge{position:absolute;top:16%;left:50%;transform:translateX(-50%);padding:12px 20px;border:1px solid rgba(255,255,255,.12);background:rgba(10,16,36,.94);color:var(--rb-blue-300);font-family:var(--f-mono);letter-spacing:.32em;text-transform:uppercase;font-size:12px;z-index:100;opacity:0;transition:opacity .4s ease,transform .4s ease;pointer-events:none;}
 .bo-line{min-height:1.2em}
 .bo-line.err{color:var(--err);font-family:var(--f-mono);font-size:clamp(15px,2.2vw,24px);letter-spacing:.28em;text-transform:uppercase}
 .bo-line.hi{color:var(--rb-blue-300);font-family:var(--f-display);font-weight:700;font-size:clamp(17px,2.6vw,28px);letter-spacing:.18em;text-transform:uppercase}
@@ -430,7 +436,6 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
     <button class="btn" id="authBtn">Authorise Connection</button>
     <div class="status" id="gateStatus">Status &nbsp;·&nbsp; Standby</div>
   </div>
-  <div id="build">Project Driver 01 · Sunday · Build P4</div>
 </div>
 
 <script>
@@ -785,7 +790,8 @@ const Drive=(()=>{
 
   async function enterInstinct(){
     // pause the car mid-track and take everything away
-    const miniCircuit = $("#miniCircuit"); if(miniCircuit) miniCircuit.style.display="none";
+    const miniCircuit = $("#miniCircuit"); if(miniCircuit){ miniCircuit.style.transition="opacity .6s"; miniCircuit.style.opacity="0"; setTimeout(()=>{ miniCircuit.style.display="none"; }, 640); }
+    ["#telemetry","#cluster","#corner","#mcBanner","#radio"].forEach(id=>{ const e=$(id); if(e){ e.style.transition="opacity .6s"; e.style.opacity="0"; } });
     if(rival) rival.active=false; rival=null;
     running=false; STATE.playerControl=false; throttle=false;
     Audio_.engineDuck(0.08);
@@ -817,7 +823,13 @@ const Drive=(()=>{
     setSector("SECTOR 3", 0.75, 0.85); HUD.banner("Sector Three");
     // lift the black — into the instinct drive
     bo.classList.remove("on");
+    const instBadge=document.createElement("div"); instBadge.className="instinctBadge"; instBadge.textContent="INSTINCT MODE";
+    document.body.appendChild(instBadge);
+    requestAnimationFrame(()=>{ instBadge.style.opacity="1"; });
     Audio_.engineRestore();
+    await sleep(1400);
+    instBadge.style.opacity="0";
+    setTimeout(()=>{ if(instBadge.parentNode) instBadge.parentNode.removeChild(instBadge); }, 500);
     await sleep(500);
     bt.innerHTML="";
     running=true; STATE.playerControl=true; last=performance.now();
@@ -1017,12 +1029,12 @@ async function startDriving(){
 
   // coach the controls one at a time (teach before required)
   HUD.banner("Formation Lap"); HUD.sector("FORMATION");
-  let s=mount(`<div class="hint" id="h1">Use <b>← / →</b> to steer</div>`,"top");
+  let s=mount(`<div class="hint" id="h1">Use <b>← / →</b> to steer <span class="hint-note">(keyboard)</span></div>`,`top`);
   Drive.enableFormation();
   // wait for a steer input
   await waitFor(()=> Drive.keyL || Drive.keyR, 6000);
   await clearStage();
-  s=mount(`<div class="hint" id="h2">Hold <b>SPACE</b> to accelerate</div>`,"top");
+  s=mount(`<div class="hint" id="h2">Hold <b>SPACE</b> to accelerate <span class="hint-note">(keyboard)</span></div>`,`top`);
   await waitFor(()=> Drive.forceThrottleHint(), 6000);
   await clearStage();
   HUD.notify("SYSTEMS ONLINE");
@@ -1093,7 +1105,7 @@ function slidingPuzzle(host, url){
       <div class="slide-grid preview" id="grid"></div>
       <div style="display:flex;align-items:center;gap:16px" id="hintRow">
         <button class="pit-btn" id="hintBtn" style="padding:9px 22px">Hint (3)</button>
-        <button class="pit-btn" id="forfeitBtn" style="padding:9px 22px">I Forfeit</button>
+        <button class="pit-btn" id="forfeitBtn" style="padding:9px 22px">Release Control</button>
       </div>
       <div class="pit-sub" id="sstat" style="min-height:1.2em"></div>`;
     const grid = host.querySelector("#grid");
@@ -1145,18 +1157,23 @@ function slidingPuzzle(host, url){
     let b=8; for(let k=0;k<80;k++){ const ns=neighbors(b); const nbr=ns[Math.floor(Math.random()*ns.length)];
       [pieces[b],pieces[nbr]]=[pieces[nbr],pieces[b]]; b=nbr; }
     blank=pieces.indexOf(8); render();
+    const hintButton = host.querySelector("#hintBtn");
     host.querySelector("#hintBtn").addEventListener("click", doHint);
-    host.querySelector("#forfeitBtn").addEventListener("click",()=>{ if(grid.classList.contains("solved"))return; pieces=[0,1,2,3,4,5,6,7,8]; blank=8; render(); onSolved(); });
+    host.querySelector("#forfeitBtn").addEventListener("click",()=>{ if(grid.classList.contains("solved"))return;
+      pieces=[0,1,2,3,4,5,6,7,8]; blank=8; render();
+      if(hintButton){ hintButton.disabled=true; hintButton.style.opacity=".4"; hintButton.style.cursor="not-allowed"; }
+      const status = host.querySelector("#sstat"); if(status){ status.innerHTML=`<span style="color:var(--ok)">Puzzle bypassed — continue</span>`; }
+      onSolved(); });
     tiles.forEach((t,cell)=> t.addEventListener("click",()=>{
       if(grid.classList.contains("preview")||grid.classList.contains("solved"))return;
       if(neighbors(blank).includes(cell)){ [pieces[blank],pieces[cell]]=[pieces[cell],pieces[blank]]; blank=cell; Audio_.click(); render();
         if(solved()) onSolved(); }
     }));
     async function onSolved(){
-      grid.classList.add("solved"); render(); Audio_.confirm();
+      grid.classList.add("solved"); grid.classList.add("completed"); render(); Audio_.confirm();
       const hr=host.querySelector("#hintRow"); if(hr) hr.style.display="none";
       const scan=document.createElement("div"); scan.className="scan run"; grid.appendChild(scan);
-      host.querySelector("#sstat").innerHTML=`<span style="color:var(--ok)">FRAGMENT RESTORED</span>`;
+      const status=host.querySelector("#sstat"); if(status){ status.innerHTML=`<span style="color:var(--ok)">FRAGMENT RESTORED — completed</span>`; }
       await sleep(1500); resolve();
     }
   });
@@ -1186,7 +1203,7 @@ function memoryMatch(host){
       else drop.innerHTML=`<span class="ph" style="color:var(--ok)">SYNCED</span>`;
       card.classList.add("placed"); card.style.visibility="hidden"; Audio_.beepHi();
       done++; const m=host.querySelector("#mstat"); m.textContent=`${done} / 6 synchronized`;
-      if(done===6){ m.innerHTML=`<span style="color:var(--ok)">ARCHIVE SYNCHRONIZED</span>`; Audio_.confirm(); setTimeout(resolve,1500); } }
+      if(done===6){ if(slotsEl) slotsEl.classList.add("completed"); m.innerHTML=`<span style="color:var(--ok)">ARCHIVE SYNCHRONIZED — completed</span>`; Audio_.confirm(); setTimeout(resolve,1500); } }
     function makeDraggable(card){
       let drag=false,sx=0,sy=0;
       card.addEventListener("pointerdown",e=>{ if(card.classList.contains("placed"))return; drag=true; sx=e.clientX; sy=e.clientY;
@@ -1325,7 +1342,7 @@ async function podium(){
   await type($("#fl",s),"This programme was never built to find the fastest driver — only the right one.",26); await sleep(1900);
   finSet(`<div class="result-big ok" style="font-size:clamp(26px,5vw,58px)">ACCESS GRANTED</div>`); Audio_.confirm(); await sleep(1700);
   finSet(`<div class="result-big blue">THE REAL MISSION BEGINS</div>
-          <div class="fin-line" style="margin-top:18px;color:var(--dim)">Three sectors completed. Third year begins.</div>`);
+          <div class="fin-line" style="margin-top:18px;color:var(--dim)">Three sectors completed. Third year completes.</div>`);
   await sleep(2800);
 }
 
