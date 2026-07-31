@@ -8,323 +8,278 @@
 
 <!-- ============================================================
      PROJECT DRIVER 01 — SUNDAY (RACE DAY)
-     BUILD PHASE 01 · FOUNDATION
+     BUILD PHASE 02 · CORE DRIVING ENGINE
      ------------------------------------------------------------
-     Scope of this phase:
-       • Repo + single-page shell (no reloads, no routing)
-       • Hardcoded canonical config: Red Bull Ring · Dry · Sunset
-       • Red Bull colour system (HARDCODED — single palette)
-       • Global STATE + Mission Controller skeleton (phase machine)
-       • Procedural Web Audio engine (boot / UI / engine / ambience)
-       • Asset Manager with exact-filename slots + graceful fallbacks
-       • Full Boot → System Restore → Ignition → Formation Countdown
-       • Live cockpit frame + HUD with power-on self-test
-     Driving arrives in PHASE 02.
+     Phase 1 (foundation) + Phase 2 (driving) in one file.
+       P1 · Boot → System Restore → Team Skin → Brief → Ignition → Countdown
+       P2 · Canvas pseudo-3D sunset road · 5-lane steering · throttle /
+            RPM / gears · corner guidance · Formation Lap + 3 Sectors ·
+            pit-stop placeholders · DRS overtake · finish line
+     Pit puzzles + archive recordings = Phase 3.  Reveal / love letter = Phase 4.
      ============================================================ -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<!-- Orbitron: motorsport / telemetry display face.  IBM Plex Mono: engineering data
-     (carried from Friday for trilogy continuity).  Cormorant Garamond: the "human"
-     register reserved for the reveal / love letter in later phases. -->
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
 
 <style>
-/* ============================================================
-   DESIGN SYSTEM
-   ============================================================ */
+/* ============================================================ DESIGN SYSTEM */
 :root{
-  /* ---- Red Bull palette · HARDCODED · single source of truth ---- */
-  --rb-navy-950:#05070F;
-  --rb-navy-900:#0A1024;
-  --rb-navy-800:#0E1630;
-  --rb-navy-700:#141E43;
-  --rb-blue:#1E41FF;          /* primary racing accent */
-  --rb-blue-300:#5B7CFF;
-  --rb-red:#E10600;           /* F1 red · critical */
-  --rb-yellow:#FFC700;        /* Red Bull yellow */
-  --text:#EEF2F8;
-  --dim:#8A94A6;
-  --line:rgba(238,242,248,.09);
-  --line-bright:rgba(238,242,248,.22);
-  --ok:#39D98A;
-  --warn:#FFC700;
-  --err:#E10600;
-
-  /* Accent is neutral steel until the Team Skin resolves (Screen A06),
-     then locks to Red Bull blue for the remainder of the experience. */
-  --accent:#6B7681;
-  --accent-soft:rgba(107,118,129,.14);
-
-  /* ---- Sunset atmosphere (Red Bull Ring · Spielberg · golden hour) ---- */
-  --sky-1:#141634;   /* zenith indigo */
-  --sky-2:#3A2A63;   /* violet */
-  --sky-3:#8E3F63;   /* magenta */
-  --sky-4:#D96A44;   /* warm orange */
-  --sky-5:#F4B65B;   /* gold horizon */
-
-  /* ---- Typography ---- */
-  --f-display:'Orbitron',sans-serif;
-  --f-mono:'IBM Plex Mono',monospace;
-  --f-serif:'Cormorant Garamond',serif;
-
-  /* ---- Motion tokens (Motion Bible 05.07) ---- */
-  --t-xxs:100ms; --t-xs:180ms; --t-s:300ms; --t-m:450ms;
-  --t-l:700ms; --t-xl:1200ms; --t-xxl:2000ms;
+  /* Red Bull palette · HARDCODED */
+  --rb-navy-950:#05070F; --rb-navy-900:#0A1024; --rb-navy-800:#0E1630; --rb-navy-700:#141E43;
+  --rb-blue:#1E41FF; --rb-blue-300:#5B7CFF; --rb-red:#E10600; --rb-yellow:#FFC700;
+  --text:#EEF2F8; --dim:#8A94A6;
+  --line:rgba(238,242,248,.09); --line-bright:rgba(238,242,248,.22);
+  --ok:#39D98A; --warn:#FFC700; --err:#E10600;
+  --accent:#6B7681; --accent-soft:rgba(107,118,129,.14);
+  /* sunset */
+  --sky-1:#141634; --sky-2:#3A2A63; --sky-3:#8E3F63; --sky-4:#D96A44; --sky-5:#F4B65B;
+  /* type */
+  --f-display:'Orbitron','Arial Narrow',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --f-serif:'Cormorant Garamond',Georgia,serif;
+  /* motion tokens */
+  --t-xxs:100ms; --t-xs:180ms; --t-s:300ms; --t-m:450ms; --t-l:700ms; --t-xl:1200ms; --t-xxl:2000ms;
   --ease:cubic-bezier(.4,0,.2,1);
 }
-
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;width:100%;overflow:hidden;background:#000;color:var(--text);
   font-family:var(--f-mono);-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
 button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
-.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.num{font-variant-numeric:tabular-nums}          /* NOTE: no "tnum" feature (caused notdef boxes) */
 
-/* ---- App frame & layered scene ---- */
 #app{position:fixed;inset:0;overflow:hidden;background:var(--rb-navy-950)}
-
-/* Scene layers stack: sky < hills < track < atmosphere < cockpit < hud < stage < gate */
 .layer{position:absolute;inset:0;pointer-events:none}
 
-/* SKY — sunset gradient */
-#sky{
-  background:
-    radial-gradient(120% 80% at 50% 118%, var(--sky-5) 0%, var(--sky-4) 16%, var(--sky-3) 38%, var(--sky-2) 66%, var(--sky-1) 100%);
-  opacity:0;transition:opacity var(--t-xxl) var(--ease);
-}
+/* SKY */
+#sky{background:radial-gradient(120% 82% at 50% 116%, var(--sky-5) 0%, var(--sky-4) 15%, var(--sky-3) 36%, var(--sky-2) 64%, var(--sky-1) 100%);
+  opacity:0;transition:opacity var(--t-xxl) var(--ease)}
 #sky.on{opacity:1}
-/* sun glow low on the horizon */
-#sun{
-  position:absolute;left:50%;bottom:12%;width:46vmin;height:46vmin;transform:translateX(-50%);
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(255,240,200,.95) 0%,rgba(255,205,120,.55) 34%,rgba(244,150,80,.18) 60%,transparent 72%);
-  filter:blur(2px);mix-blend-mode:screen;opacity:0;transition:opacity var(--t-xxl) var(--ease)
-}
+#sun{position:absolute;left:50%;bottom:14%;width:46vmin;height:46vmin;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(255,240,200,.95) 0%,rgba(255,205,120,.5) 34%,rgba(244,150,80,.16) 60%,transparent 72%);
+  filter:blur(2px);mix-blend-mode:screen;opacity:0;transition:opacity var(--t-xxl) var(--ease)}
 #sky.on #sun{opacity:1}
 
-/* HILLS — Styrian silhouettes */
-#hills{opacity:0;transition:opacity var(--t-xxl) var(--ease)}
+/* HILLS */
+#hills{opacity:0;transition:opacity var(--t-xxl) var(--ease),bottom var(--t-l) var(--ease);bottom:0}
 #hills.on{opacity:1}
-#hills svg{position:absolute;bottom:26%;left:0;width:100%;height:40%}
+#hills.drive{opacity:.55}
+#hills svg{position:absolute;bottom:44%;left:0;width:100%;height:26%}
 
-/* TRACK — start/finish straight receding to horizon (static in Phase 1) */
-#track{opacity:0;transition:opacity var(--t-xl) var(--ease)}
+/* ROAD CANVAS (Phase 2) */
+#road{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity var(--t-l) var(--ease);z-index:8}
+#road.on{opacity:1}
+/* horizon haze */
+#haze{position:absolute;left:0;right:0;top:46%;height:14%;z-index:9;opacity:0;transition:opacity var(--t-l);
+  background:linear-gradient(180deg, rgba(244,182,91,.28), rgba(20,22,52,0));mix-blend-mode:screen}
+#haze.on{opacity:1}
+
+/* STATIC TRACK (boot only) */
+#track{opacity:0;transition:opacity var(--t-xl) var(--ease);z-index:7}
 #track.on{opacity:1}
-.asphalt{
-  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
-  width:220%;height:34%;
-  background:linear-gradient(180deg,#20242e 0%,#171a22 60%,#0e1016 100%);
-  clip-path:polygon(43% 0,57% 0,100% 100%,0 100%);
-}
-.centerline{
-  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
-  width:0.7%;height:34%;
-  background:repeating-linear-gradient(180deg,rgba(255,255,255,.85) 0 3%,transparent 3% 8%);
-  clip-path:polygon(0 0,100% 0,100% 100%,0 100%);opacity:.5
-}
-.kerb{position:absolute;bottom:0;height:34%;width:6%;
-  background:repeating-linear-gradient(180deg,var(--rb-red) 0 6%, #f2f2f2 6% 12%)}
-.kerb.l{left:50%;transform:translateX(-1550%) skewX(20deg);opacity:.55}
-.kerb.r{left:50%;transform:translateX(1450%) skewX(-20deg);opacity:.55}
+.asphalt{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:220%;height:34%;
+  background:linear-gradient(180deg,#20242e 0%,#171a22 60%,#0e1016 100%);clip-path:polygon(43% 0,57% 0,100% 100%,0 100%)}
+.centerline{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:.7%;height:34%;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.85) 0 3%,transparent 3% 8%);opacity:.5}
 
-/* ATMOSPHERE — depth haze + top monitor vignette */
-#atmos{
-  background:
-    radial-gradient(130% 120% at 50% 44%, transparent 52%, rgba(3,4,10,.72) 100%),
-    linear-gradient(180deg, rgba(20,22,52,.35) 0%, transparent 30%);
-  mix-blend-mode:multiply;opacity:0;transition:opacity var(--t-xl) var(--ease)
-}
+/* ATMOSPHERE + speed blur */
+#atmos{background:radial-gradient(130% 120% at 50% 46%, transparent 52%, rgba(3,4,10,.72) 100%);
+  mix-blend-mode:multiply;opacity:0;transition:opacity var(--t-xl) var(--ease);z-index:18}
 #atmos.on{opacity:1}
+#blur{z-index:19;opacity:0;transition:opacity var(--t-m) var(--ease);
+  background:radial-gradient(120% 90% at 50% 55%, transparent 30%, rgba(91,124,255,.10) 70%, rgba(30,65,255,.22) 100%)}
 
-/* ============================================================
-   COCKPIT
-   ============================================================ */
+/* ============================================================ COCKPIT */
 #cockpit{opacity:0;transition:opacity var(--t-l) var(--ease);z-index:20}
 #cockpit.on{opacity:1}
-/* subtle idle breathing applied to the whole cockpit group */
-#cockpit .rig{position:absolute;inset:0;transform:translateZ(0);will-change:transform}
-
-/* Halo device — thin arc across the top */
-.halo{position:absolute;top:0;left:0;width:100%;height:26%;pointer-events:none}
+#cockpit .rig{position:absolute;inset:0;will-change:transform}
+.halo{position:absolute;top:0;left:0;width:100%;height:26%}
 .halo svg{width:100%;height:100%}
+.pillar{position:absolute;top:0;bottom:0;width:22%;background:linear-gradient(90deg,rgba(4,5,12,.96),rgba(4,5,12,.32) 70%,transparent)}
+.pillar.l{left:0}.pillar.r{right:0;transform:scaleX(-1)}
+#wheel{position:absolute;left:50%;bottom:-9%;transform:translateX(-50%);width:min(940px,94vw);height:50vh}
+#wheel svg{width:100%;height:100%;overflow:visible;transition:transform var(--t-xs) linear}
 
-/* A-pillars / cockpit sides darken the frame edges */
-.pillar{position:absolute;top:0;bottom:0;width:22%;
-  background:linear-gradient(90deg,rgba(4,5,12,.96),rgba(4,5,12,.35) 70%,transparent)}
-.pillar.l{left:0}
-.pillar.r{right:0;transform:scaleX(-1)}
-
-/* Steering wheel + mounted display fills the bottom */
-#wheel{position:absolute;left:50%;bottom:-8%;transform:translateX(-50%);
-  width:min(920px,92vw);height:52vh;pointer-events:none}
-#wheel svg{width:100%;height:100%;overflow:visible}
-
-/* ============================================================
-   HUD  (mounts on the wheel display + top banner)
-   ============================================================ */
+/* ============================================================ HUD */
 #hud{position:absolute;inset:0;z-index:30;pointer-events:none;opacity:0;transition:opacity var(--t-m) var(--ease)}
 #hud.on{opacity:1}
 .hud-el{opacity:0;transition:opacity var(--t-s) var(--ease)}
 .hud-el.lit{opacity:1}
 
-/* Mission Control banner — top centre */
-#mcBanner{
-  position:absolute;top:clamp(14px,3vh,34px);left:50%;transform:translateX(-50%) translateY(-12px);
-  min-width:280px;max-width:70vw;padding:10px 26px;text-align:center;
-  background:linear-gradient(180deg,rgba(10,16,36,.92),rgba(10,16,36,.66));
+#mcBanner{position:absolute;top:clamp(14px,3vh,32px);left:50%;transform:translateX(-50%) translateY(-12px);
+  min-width:280px;max-width:66vw;padding:9px 26px;text-align:center;
+  background:linear-gradient(180deg,rgba(10,16,36,.92),rgba(10,16,36,.62));
   border:1px solid var(--line-bright);border-top:2px solid var(--accent);
-  transition:transform var(--t-s) var(--ease),opacity var(--t-s) var(--ease),border-color var(--t-l) var(--ease)
-}
-#mcBanner .lab{font-family:var(--f-mono);font-size:10px;letter-spacing:.32em;color:var(--dim);text-transform:uppercase}
-#mcBanner .val{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:clamp(13px,1.5vw,17px);text-transform:uppercase;margin-top:4px}
+  transition:transform var(--t-s) var(--ease),border-color var(--t-l) var(--ease)}
+#mcBanner .lab{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.32em;color:var(--dim);text-transform:uppercase}
+#mcBanner .val{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:clamp(13px,1.5vw,17px);text-transform:uppercase;margin-top:3px}
 #mcBanner.show{transform:translateX(-50%) translateY(0)}
 
-/* Radio indicator — top left */
-#radio{position:absolute;top:clamp(14px,3vh,34px);left:clamp(16px,3vw,40px);display:flex;align-items:center;gap:10px}
+#radio{position:absolute;top:clamp(14px,3vh,32px);left:clamp(16px,3vw,38px);display:flex;align-items:center;gap:10px}
 #radioDot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
 #radioDot.idle{animation:pulse 2.6s var(--ease) infinite}
 #radioDot.speaking{animation:pulse .7s var(--ease) infinite}
-#radio .rtxt{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.32;transform:scale(.82)}}
+#radio .rtxt{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
 
-/* Telemetry panel — top right */
-#telemetry{position:absolute;top:clamp(14px,3vh,34px);right:clamp(16px,3vw,40px);
-  display:grid;grid-template-columns:auto auto;gap:5px 16px;
-  padding:12px 16px;background:rgba(8,10,24,.6);border:1px solid var(--line);text-align:right}
-#telemetry .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:left}
-#telemetry .v{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--text)}
+#telemetry{position:absolute;top:clamp(14px,3vh,32px);right:clamp(16px,3vw,38px);
+  display:grid;grid-template-columns:auto auto;gap:5px 16px;padding:11px 15px;
+  background:rgba(8,10,24,.58);border:1px solid var(--line);text-align:right}
+#telemetry .k{font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:left}
+#telemetry .v{font-family:var(--f-mono);font-size:11px;color:var(--text)}
 
-/* Mini circuit — mid right */
-#miniCircuit{position:absolute;right:clamp(16px,3vw,40px);top:clamp(140px,22vh,190px);
-  width:132px;height:132px;padding:8px;background:rgba(8,10,24,.55);border:1px solid var(--line)}
+#miniCircuit{position:absolute;right:clamp(16px,3vw,38px);top:clamp(132px,21vh,182px);
+  width:128px;height:128px;padding:8px;background:rgba(8,10,24,.52);border:1px solid var(--line)}
 #miniCircuit svg{width:100%;height:100%}
-#miniCircuit .cap{position:absolute;bottom:-16px;left:0;right:0;text-align:center;
+#miniCircuit .cap{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
   font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
 
-/* Notification stack — single message, above the wheel */
-#notify{position:absolute;left:50%;bottom:calc(52vh - 6px);transform:translateX(-50%) translateY(8px);
-  padding:8px 22px;background:rgba(10,16,36,.9);border:1px solid var(--accent);
+#notify{position:absolute;left:50%;top:clamp(96px,15vh,132px);transform:translateX(-50%) translateY(8px);
+  padding:7px 22px;background:rgba(10,16,36,.9);border:1px solid var(--accent);
   font-family:var(--f-mono);font-size:11px;letter-spacing:.22em;color:var(--text);text-transform:uppercase;
-  opacity:0;transition:opacity var(--t-xs) var(--ease),transform var(--t-xs) var(--ease);white-space:nowrap}
+  opacity:0;transition:opacity var(--t-xs),transform var(--t-xs);white-space:nowrap}
 #notify.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* Speed cluster — mounted centre of the wheel display */
-#cluster{position:absolute;left:50%;bottom:clamp(70px,15vh,150px);transform:translateX(-50%);
-  width:min(560px,80vw);text-align:center}
-/* shift-light strip */
-#shift{display:flex;gap:5px;justify-content:center;margin-bottom:14px}
+/* corner guidance */
+#corner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;opacity:0;
+  transition:opacity var(--t-xs) var(--ease)}
+#corner.show{opacity:1}
+#corner .dir{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,6vw,64px);letter-spacing:.06em;
+  color:var(--rb-yellow);text-shadow:0 0 26px rgba(255,199,0,.4)}
+#corner .note{font-family:var(--f-mono);font-size:12px;letter-spacing:.28em;color:var(--text);text-transform:uppercase;margin-top:4px}
+
+/* speed cluster (rebuilt & robust) */
+#cluster{position:absolute;left:50%;bottom:clamp(64px,13vh,132px);transform:translateX(-50%);
+  width:min(600px,84vw);display:flex;flex-direction:column;align-items:center;gap:12px}
+#shift{display:flex;gap:5px;justify-content:center}
 #shift i{width:16px;height:7px;border-radius:1px;background:#1a2030;transition:background var(--t-xxs) linear,box-shadow var(--t-xxs) linear}
 #shift i.on.g{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 #shift i.on.y{background:var(--rb-yellow);box-shadow:0 0 8px var(--rb-yellow)}
 #shift i.on.r{background:var(--rb-red);box-shadow:0 0 8px var(--rb-red)}
 #shift i.on.b{background:var(--rb-blue-300);box-shadow:0 0 10px var(--rb-blue)}
-/* speed + gear */
-#clusterRow{display:flex;align-items:baseline;justify-content:center;gap:22px}
-#speed{font-family:var(--f-display);font-weight:800;font-size:clamp(52px,11vw,104px);line-height:.9;letter-spacing:.01em}
-#speedUnit{font-family:var(--f-mono);font-size:12px;letter-spacing:.3em;color:var(--dim);margin-left:-10px}
-#gearWrap{display:flex;flex-direction:column;align-items:center}
-#gear{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,6vw,56px);color:var(--accent);line-height:1;transition:color var(--t-l) var(--ease)}
-#gearLab{font-family:var(--f-mono);font-size:9px;letter-spacing:.3em;color:var(--dim);margin-top:4px}
-#subRow{display:flex;justify-content:center;gap:26px;margin-top:12px}
+.clusterMain{display:flex;align-items:center;justify-content:center;gap:clamp(16px,3vw,40px)}
+.speedBox{display:flex;flex-direction:column;align-items:center;line-height:1}
+#speed{font-family:var(--f-display);font-weight:800;font-size:clamp(50px,10vw,96px);letter-spacing:.01em}
+#speedUnit{font-family:var(--f-mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-top:6px}
+.gearBox{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:clamp(64px,8vw,92px);height:clamp(64px,8vw,92px);border:1px solid var(--line-bright);
+  background:rgba(8,10,24,.5)}
+#gear{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,5vw,50px);color:var(--accent);
+  line-height:1;transition:color var(--t-l) var(--ease)}
+#gearLab{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.28em;color:var(--dim);margin-top:5px}
+#subRow{display:flex;justify-content:center;gap:clamp(16px,2.4vw,30px)}
 #subRow .cell{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
 #subRow .cell b{color:var(--text);font-weight:600}
 #subRow .cell.drs{color:#3a4152}
 #subRow .cell.drs.on{color:var(--rb-blue-300);text-shadow:0 0 12px var(--rb-blue)}
 
-/* ============================================================
-   STAGE — full-screen narrative overlays (boot, brief, countdown)
-   ============================================================ */
-#stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
-  padding:6vh 6vw;pointer-events:none}
-.screen{width:100%;max-width:960px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;text-align:center;gap:clamp(14px,2.6vh,28px)}
+/* ============================================================ STAGE overlays */
+#stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:6vh 6vw;pointer-events:none}
+.screen{width:100%;max-width:960px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(14px,2.6vh,26px)}
 .screen.left{align-items:flex-start;text-align:left}
+.screen.top{justify-content:flex-start;padding-top:clamp(70px,12vh,120px)}
 .fade-in{animation:fadein var(--t-l) var(--ease)}
 .fade-out{animation:fadeout var(--t-m) var(--ease) forwards}
-@keyframes fadein{from{opacity:0}to{opacity:1}}
-@keyframes fadeout{to{opacity:0}}
-
+@keyframes fadein{from{opacity:0}to{opacity:1}}@keyframes fadeout{to{opacity:0}}
 .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.36em;color:var(--dim);text-transform:uppercase}
-.mono{font-family:var(--f-mono);letter-spacing:.06em;color:var(--dim)}
-.mono .ok{color:var(--ok)}
-.title{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.1em;
-  font-size:clamp(24px,5vw,54px);line-height:1.02}
+.mono{font-family:var(--f-mono);letter-spacing:.06em;color:var(--dim)}.mono .ok{color:var(--ok)}
+.title{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:clamp(24px,5vw,54px);line-height:1.02}
 .subtitle{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.14em;font-size:clamp(15px,2vw,22px)}
 .caret::after{content:"▍";margin-left:2px;color:var(--accent);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-
-/* restore / loading list */
-.loadlist{display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;
-  font-family:var(--f-mono);font-size:13px;letter-spacing:.05em}
-.loadlist .li{display:flex;align-items:center;justify-content:space-between;gap:20px;color:var(--dim);
-  opacity:0;transform:translateY(5px);transition:opacity var(--t-s),transform var(--t-s)}
-.loadlist .li.in{opacity:1;transform:none}
-.loadlist .li.done{color:var(--text)}
-.loadlist .li .st{color:var(--ok);font-size:12px}
-/* stage-loading bar */
-.stagerow{display:flex;flex-direction:column;gap:8px;width:100%;max-width:440px;margin:0 auto;
-  opacity:0;transform:translateY(6px);transition:opacity var(--t-s),transform var(--t-s)}
+.loadlist{display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;font-family:var(--f-mono);font-size:13px;letter-spacing:.05em}
+.loadlist .li{display:flex;align-items:center;justify-content:space-between;gap:20px;color:var(--dim);opacity:0;transform:translateY(5px);transition:opacity var(--t-s),transform var(--t-s)}
+.loadlist .li.in{opacity:1;transform:none}.loadlist .li.done{color:var(--text)}.loadlist .li .st{color:var(--ok);font-size:12px}
+.stagerow{display:flex;flex-direction:column;gap:8px;width:100%;max-width:440px;margin:0 auto;opacity:0;transform:translateY(6px);transition:opacity var(--t-s),transform var(--t-s)}
 .stagerow.in{opacity:1;transform:none}
-.stagerow .top{display:flex;justify-content:space-between;font-family:var(--f-mono);
-  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.stagerow .top{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
 .stagerow .top .name{color:var(--text)}
-.bar{height:5px;background:#141a2c;overflow:hidden}
-.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--t-l) var(--ease),background var(--t-l) var(--ease)}
-
-/* mission brief panel */
-.brief{width:100%;max-width:680px;padding:clamp(20px,3vw,34px);
-  background:linear-gradient(180deg,rgba(10,16,36,.9),rgba(10,16,36,.55));
-  border:1px solid var(--line);border-left:2px solid var(--accent);text-align:left}
-.brief p{font-family:var(--f-mono);font-size:clamp(13px,1.3vw,15px);line-height:1.75;color:var(--text);min-height:1.7em}
-.brief p+p{margin-top:12px}
-.brief .spoke{color:var(--text)}
-
-/* countdown */
-#count{font-family:var(--f-display);font-weight:900;font-size:min(52vh,44vw);line-height:1;
-  color:var(--text);text-shadow:0 0 60px rgba(30,65,255,.5)}
-.count-label{font-family:var(--f-display);font-weight:700;letter-spacing:.3em;
-  font-size:clamp(18px,3vw,30px);color:var(--accent);text-transform:uppercase}
+.bar{height:5px;background:#141a2c;overflow:hidden}.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--t-l) var(--ease),background var(--t-l) var(--ease)}
+.brief{width:100%;max-width:680px;padding:clamp(20px,3vw,34px);background:linear-gradient(180deg,rgba(10,16,36,.9),rgba(10,16,36,.52));border:1px solid var(--line);border-left:2px solid var(--accent);text-align:left}
+.brief p{font-family:var(--f-mono);font-size:clamp(13px,1.3vw,15px);line-height:1.75;color:var(--text);min-height:1.7em}.brief p+p{margin-top:12px}
+#count{font-family:var(--f-display);font-weight:900;font-size:min(48vh,40vw);line-height:1;color:var(--text);text-shadow:0 0 60px rgba(30,65,255,.5)}
+.count-label{font-family:var(--f-display);font-weight:700;letter-spacing:.3em;font-size:clamp(18px,3vw,30px);color:var(--accent);text-transform:uppercase}
 .lights{display:flex;gap:clamp(10px,1.8vw,22px);justify-content:center;margin-top:8px}
 .lcol{display:flex;flex-direction:column;gap:8px}
-.light{width:clamp(26px,3.4vw,44px);height:clamp(26px,3.4vw,44px);border-radius:50%;
-  background:#1a0606;border:1px solid rgba(225,6,0,.22);transition:background var(--t-xxs),box-shadow var(--t-xxs)}
+.light{width:clamp(26px,3.4vw,44px);height:clamp(26px,3.4vw,44px);border-radius:50%;background:#1a0606;border:1px solid rgba(225,6,0,.22);transition:background var(--t-xxs),box-shadow var(--t-xxs)}
 .light.on{background:var(--rb-red);box-shadow:0 0 22px -2px var(--rb-red),inset 0 0 8px rgba(0,0,0,.4)}
+/* control hint pill */
+.hint{font-family:var(--f-mono);font-size:12px;letter-spacing:.16em;color:var(--text);text-transform:uppercase;
+  padding:10px 22px;border:1px solid var(--accent);background:rgba(10,16,36,.85);border-radius:2px}
+.hint b{color:var(--rb-blue-300)}
+/* pit / garage overlay */
+#garage{position:absolute;inset:0;z-index:45;background:radial-gradient(120% 100% at 50% 60%, #10131c, #05070f);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;opacity:0;pointer-events:none;transition:opacity var(--t-l) var(--ease)}
+#garage.on{opacity:1;pointer-events:auto}
+.pitbig{font-family:var(--f-display);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:clamp(22px,4vw,44px);text-align:center}
 
-/* ============================================================
-   AUTHORISE GATE
-   ============================================================ */
-#gate{position:absolute;inset:0;z-index:60;background:var(--rb-navy-950);
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:26px;
-  pointer-events:auto;transition:opacity var(--t-l) var(--ease)}
+/* ===== PIT-STOP PUZZLES & ARCHIVE (Phase 3) ===== */
+.pit-wrap{width:100%;max-width:920px;display:flex;flex-direction:column;align-items:center;gap:18px;pointer-events:auto;padding:2vh 4vw}
+.pit-eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase}
+.pit-head{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:clamp(15px,2vw,20px);color:var(--text)}
+.pit-sub{font-family:var(--f-mono);font-size:12px;letter-spacing:.05em;color:var(--dim);text-align:center;max-width:58ch;line-height:1.6}
+/* sliding puzzle */
+.slide-grid{position:relative;width:min(420px,74vw);aspect-ratio:1/1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3px;background:#05070f;border:1px solid var(--line-bright);padding:3px}
+.tile{position:relative;background-size:300% 300%;background-color:#0e1424;cursor:pointer;overflow:hidden;transition:box-shadow var(--t-xs)}
+.tile:hover{box-shadow:inset 0 0 0 2px var(--rb-blue)}
+.tile.blank{background:transparent!important;cursor:default;box-shadow:none}
+.tile .tn{position:absolute;left:6px;top:4px;font-family:var(--f-mono);font-size:11px;color:rgba(238,242,248,.5)}
+.slide-grid.preview .tile{cursor:default}
+.slide-grid.solved{gap:0}
+.slide-grid.solved .tile{box-shadow:none}
+.scan{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(91,124,255,.3),transparent);height:40%;transform:translateY(-130%)}
+.scan.run{animation:scan 1.2s var(--ease) forwards}
+@keyframes scan{to{transform:translateY(330%)}}
+/* archive playback */
+.archive-photo{width:min(560px,82vw);aspect-ratio:16/10;background:#05070f center/cover no-repeat;border:1px solid var(--line-bright);position:relative;overflow:hidden}
+.archive-photo.zoom{animation:slowzoom 20s linear forwards}
+@keyframes slowzoom{to{transform:scale(1.035)}}
+.archive-caption{font-family:var(--f-serif);font-size:clamp(18px,2.4vw,26px);line-height:1.5;color:#F4E9D8;max-width:44ch;text-align:center;font-style:italic}
+.wave{display:flex;align-items:center;gap:3px;height:26px}
+.wave i{width:3px;background:#2a3350;border-radius:2px;height:4px}
+.wave.live i{background:var(--rb-blue-300);animation:wv .6s ease-in-out infinite alternate}
+.wave.live i:nth-child(2n){animation-delay:.15s}.wave.live i:nth-child(3n){animation-delay:.3s}
+@keyframes wv{to{height:22px}}
+.pit-btn{font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;padding:13px 34px;color:var(--text);border:1px solid var(--rb-blue);background:linear-gradient(180deg,rgba(30,65,255,.16),rgba(10,16,36,.6));pointer-events:auto;transition:box-shadow var(--t-m),transform var(--t-xxs)}
+.pit-btn:hover{box-shadow:0 0 24px -6px var(--rb-blue)}
+.pit-btn:active{transform:translateY(2px)}
+/* matching */
+.match-wrap{display:grid;grid-template-columns:0.9fr 1.25fr;gap:24px;width:100%;max-width:900px;align-items:start}
+.tray{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:flex-start}
+.pcard{width:120px;height:84px;background:#0e1424 center/cover no-repeat;border:1px solid var(--line-bright);cursor:grab;position:relative;touch-action:none;transition:box-shadow var(--t-xs)}
+.pcard .pn{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:rgba(238,242,248,.6)}
+.pcard.dragging{cursor:grabbing;z-index:80;box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 0 2px var(--rb-blue)}
+.pcard.placed{cursor:default}
+.slots{display:flex;flex-direction:column;gap:9px}
+.slot{display:flex;align-items:center;gap:12px;padding:8px;border:1px dashed var(--line-bright);background:rgba(8,10,24,.4);min-height:78px;transition:border-color var(--t-xs),background var(--t-xs)}
+.slot.over{border-color:var(--rb-blue);background:rgba(30,65,255,.09)}
+.slot.locked{border-style:solid;border-color:var(--ok);background:rgba(57,217,138,.05)}
+.slot .drop{width:106px;height:62px;flex:0 0 auto;background:#05070f center/cover no-repeat;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.slot .drop .ph{font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;color:var(--dim)}
+.slot .meta{flex:1;text-align:left}
+.slot .atitle{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;color:var(--rb-blue-300);text-transform:uppercase}
+.slot .acap{font-family:var(--f-serif);font-style:italic;font-size:14.5px;line-height:1.4;color:#E7DCC9;margin-top:4px}
+.slot.locked .atitle{color:var(--ok)}
+.astrip{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.astrip div{width:64px;height:42px;background:#0e1424 center/cover no-repeat;border:1px solid var(--line)}
+
+/* AUTHORISE GATE */
+#gate{position:absolute;inset:0;z-index:60;background:var(--rb-navy-950);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:26px;pointer-events:auto;transition:opacity var(--t-l) var(--ease)}
 #gate.hide{opacity:0;pointer-events:none}
 #gate .mark{font-family:var(--f-display);font-weight:700;letter-spacing:.34em;font-size:12px;color:var(--dim);text-transform:uppercase}
-#gate h1{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;
-  font-size:clamp(22px,4vw,42px);text-align:center;line-height:1.05}
+#gate h1{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:clamp(22px,4vw,42px);text-align:center;line-height:1.05}
 #gate p{font-family:var(--f-mono);font-size:13px;color:var(--dim);max-width:52ch;text-align:center;line-height:1.7}
-.btn{position:relative;font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;
-  padding:15px 40px;color:var(--text);border:1px solid var(--line-bright);
-  background:linear-gradient(180deg,rgba(30,65,255,.14),rgba(10,16,36,.6));
-  transition:border-color var(--t-s),box-shadow var(--t-m),transform var(--t-xxs);pointer-events:auto}
+.btn{position:relative;font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;padding:15px 40px;color:var(--text);border:1px solid var(--line-bright);background:linear-gradient(180deg,rgba(30,65,255,.14),rgba(10,16,36,.6));transition:border-color var(--t-s),box-shadow var(--t-m),transform var(--t-xxs);pointer-events:auto}
 .btn:hover{border-color:var(--rb-blue);box-shadow:0 0 0 1px rgba(30,65,255,.25),0 0 26px -6px var(--rb-blue)}
 .btn:active{transform:translateY(2px)}
 #gate .status{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
-
-/* build marker (dev/test deploys) — quiet, corner, non-intrusive */
-#build{position:absolute;left:10px;bottom:8px;z-index:70;font-family:var(--f-mono);
-  font-size:9px;letter-spacing:.2em;color:rgba(138,148,166,.4);text-transform:uppercase;pointer-events:none}
-
-/* reduced motion */
-@media (prefers-reduced-motion: reduce){
-  #radioDot.idle,#radioDot.speaking,.caret::after{animation:none}
-}
+#build{position:absolute;left:10px;bottom:8px;z-index:70;font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;color:rgba(138,148,166,.4);text-transform:uppercase;pointer-events:none}
+@media (prefers-reduced-motion: reduce){#radioDot.idle,#radioDot.speaking,.caret::after{animation:none}}
 </style>
 </head>
 <body>
 <div id="app">
-
-  <!-- ---- Scene ---- -->
   <div id="sky" class="layer"><div id="sun"></div></div>
-
   <div id="hills" class="layer">
     <svg viewBox="0 0 1440 300" preserveAspectRatio="none" aria-hidden="true">
       <path d="M0,300 L0,150 L180,90 L360,140 L560,60 L760,150 L980,80 L1200,160 L1440,110 L1440,300 Z" fill="#241a3a" opacity="0.9"/>
@@ -333,16 +288,16 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
     </svg>
   </div>
 
+  <canvas id="road" class="layer"></canvas>
+  <div id="haze" ></div>
+
   <div id="track" class="layer">
-    <div class="asphalt"></div>
-    <div class="kerb l"></div>
-    <div class="kerb r"></div>
-    <div class="centerline"></div>
+    <div class="asphalt"></div><div class="centerline"></div>
   </div>
 
   <div id="atmos" class="layer"></div>
+  <div id="blur" class="layer"></div>
 
-  <!-- ---- Cockpit ---- -->
   <div id="cockpit" class="layer">
     <div class="rig">
       <div class="halo">
@@ -353,40 +308,23 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
           <line x1="720" y1="152" x2="720" y2="200" stroke="rgba(4,5,12,.94)" stroke-width="26"/>
         </svg>
       </div>
-      <div class="pillar l"></div>
-      <div class="pillar r"></div>
+      <div class="pillar l"></div><div class="pillar r"></div>
       <div id="wheel">
-        <svg viewBox="0 0 920 520" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-          <!-- wheel body -->
-          <path d="M120,520 L120,360 Q120,250 260,238 L360,232 Q460,224 560,232 L660,238 Q800,250 800,360 L800,520 Z"
-                fill="#0b0e1a" stroke="rgba(238,242,248,.10)" stroke-width="2"/>
-          <!-- central display bezel -->
+        <svg id="wheelSvg" viewBox="0 0 920 520" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <path d="M120,520 L120,360 Q120,250 260,238 L360,232 Q460,224 560,232 L660,238 Q800,250 800,360 L800,520 Z" fill="#0b0e1a" stroke="rgba(238,242,248,.10)" stroke-width="2"/>
           <rect x="300" y="270" width="320" height="150" rx="8" fill="#05070f" stroke="rgba(238,242,248,.14)" stroke-width="2"/>
-          <!-- grips -->
           <path d="M120,360 Q70,368 70,430 L70,520 L150,520 L150,372 Z" fill="#0e1120" stroke="rgba(238,242,248,.08)" stroke-width="2"/>
           <path d="M800,360 Q850,368 850,430 L850,520 L770,520 L770,372 Z" fill="#0e1120" stroke="rgba(238,242,248,.08)" stroke-width="2"/>
-          <!-- accent rotary marks -->
           <circle cx="220" cy="300" r="20" fill="#0e1120" stroke="var(--accent)" stroke-width="2"/>
           <circle cx="700" cy="300" r="20" fill="#0e1120" stroke="var(--accent)" stroke-width="2"/>
-          <rect x="196" y="360" width="48" height="16" rx="3" fill="#0e1120" stroke="rgba(238,242,248,.10)"/>
-          <rect x="676" y="360" width="48" height="16" rx="3" fill="#0e1120" stroke="rgba(238,242,248,.10)"/>
         </svg>
       </div>
     </div>
   </div>
 
-  <!-- ---- HUD ---- -->
   <div id="hud">
-    <div id="radio" class="hud-el">
-      <span id="radioDot" class="idle"></span>
-      <span class="rtxt" id="radioTxt">Radio · Standby</span>
-    </div>
-
-    <div id="mcBanner" class="hud-el">
-      <div class="lab">Mission Control</div>
-      <div class="val" id="mcVal">Standby</div>
-    </div>
-
+    <div id="radio" class="hud-el"><span id="radioDot" class="idle"></span><span class="rtxt" id="radioTxt">Radio · Standby</span></div>
+    <div id="mcBanner" class="hud-el"><div class="lab">Mission Control</div><div class="val" id="mcVal">Standby</div></div>
     <div id="telemetry" class="hud-el">
       <span class="k">Surface</span><span class="v num" id="tSurf">—</span>
       <span class="k">Brake Bias</span><span class="v num" id="tBias">—</span>
@@ -394,26 +332,19 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
       <span class="k">Signal</span><span class="v" id="tSig">—</span>
       <span class="k">Archive</span><span class="v" id="tArch">—</span>
     </div>
-
     <div id="miniCircuit" class="hud-el">
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <!-- stylised Red Bull Ring outline -->
-        <path id="rbRing" d="M20,78 L26,40 Q28,26 42,26 L58,26 Q70,26 70,36 L70,50 Q70,58 60,58 L44,58 Q36,58 40,66 L52,74 Q60,80 74,78 L84,76"
-              fill="none" stroke="rgba(238,242,248,.28)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="rbRing" d="M20,78 L26,40 Q28,26 42,26 L58,26 Q70,26 70,36 L70,50 Q70,58 60,58 L44,58 Q36,58 40,66 L52,74 Q60,80 74,78 L84,76" fill="none" stroke="rgba(238,242,248,.28)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         <circle id="rbCar" cx="20" cy="78" r="3.6" fill="var(--accent)"/>
       </svg>
       <div class="cap">Red Bull Ring</div>
     </div>
-
+    <div id="corner" class="hud-el"><div class="dir" id="cornerDir"></div><div class="note" id="cornerNote"></div></div>
     <div id="cluster" class="hud-el">
-      <div id="shift">
-        <i class="g"></i><i class="g"></i><i class="g"></i><i class="y"></i><i class="y"></i>
-        <i class="y"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="b"></i>
-        <i class="b"></i><i class="b"></i>
-      </div>
-      <div id="clusterRow">
-        <div><span id="speed" class="num">0</span><span id="speedUnit">KM/H</span></div>
-        <div id="gearWrap"><span id="gear">N</span><span id="gearLab">Gear</span></div>
+      <div id="shift"><i class="g"></i><i class="g"></i><i class="g"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="b"></i><i class="b"></i><i class="b"></i></div>
+      <div class="clusterMain">
+        <div class="speedBox"><span id="speed" class="num">0</span><span id="speedUnit">KM/H</span></div>
+        <div class="gearBox"><span id="gear" class="num">N</span><span id="gearLab">GEAR</span></div>
       </div>
       <div id="subRow">
         <span class="cell">RPM <b id="rpm" class="num">0</b></span>
@@ -422,14 +353,12 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
         <span class="cell" id="sectorCell">FORMATION</span>
       </div>
     </div>
-
     <div id="notify" class="hud-el"></div>
   </div>
 
-  <!-- ---- Narrative stage ---- -->
+  <div id="garage"></div>
   <div id="stage"></div>
 
-  <!-- ---- Gate ---- -->
   <div id="gate">
     <div class="mark">Mission Control</div>
     <h1>Driver Programme<br/>Final Assessment</h1>
@@ -437,561 +366,722 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
     <button class="btn" id="authBtn">Authorise Connection</button>
     <div class="status" id="gateStatus">Status &nbsp;·&nbsp; Standby</div>
   </div>
-
-  <div id="build">Project Driver 01 · Sunday · Build P1</div>
+  <div id="build">Project Driver 01 · Sunday · Build P2</div>
 </div>
 
 <script>
 "use strict";
-/* ============================================================
-   PROJECT DRIVER 01 — SUNDAY · BUILD PHASE 01
-   Single global runtime. No reloads, no routing.
-   ============================================================ */
-
-/* ------------------------------------------------------------
-   CONFIGURATION  (hardcoded canonical instance)
-   Fully independent of Friday/Saturday. Edit here to reconfigure.
-   ------------------------------------------------------------ */
+/* ============================================================ CONFIG */
 const CONFIG = {
-  event:       "Driver Evaluation Programme — Final Assessment",
-  circuit:     "Red Bull Ring",
-  location:    "Spielberg, Austria",
-  weather:     "Dry",          // Dry | Rain | Cloudy
-  timeOfDay:   "Sunset",       // Sunset (golden hour)
-  format:      "Single Flying Evaluation Lap",
-  driver:      "Driver 01",
-  coordinator: "Mission Control",
-  team:        "Red Bull Racing",   // accent locked to Red Bull palette
-  sectors:     3,
-  pitStops:    2,
-  /* Music map = MAP B (per build decision A1).
-     Files are USER-SUPPLIED. Missing files fall back gracefully to
-     procedural ambience — the experience always runs. */
-  music: {
-    formation: "assets/audio/music_formation_f1_theme.mp3", // Brian Tyler — F1 Theme (instrumental)
-    drs:       "assets/audio/music_drs_lose_my_mind.mp3",   // Don Toliver — Lose My Mind (instrumental)
-    final:     "assets/audio/music_final_surili.mp3"        // Surili Akhiyon Wale (instrumental)
-  }
+  event:"Driver Evaluation Programme — Final Assessment", circuit:"Red Bull Ring",
+  location:"Spielberg, Austria", weather:"Dry", timeOfDay:"Sunset",
+  format:"Single Flying Evaluation Lap", driver:"Driver 01", coordinator:"Mission Control",
+  team:"Red Bull Racing", sectors:3, pitStops:2,
+  music:{ formation:"assets/audio/music_formation_f1_theme.mp3",
+          drs:"assets/audio/music_drs_lose_my_mind.mp3",
+          final:"assets/audio/music_final_surili.mp3" }
 };
-
-/* ------------------------------------------------------------
-   ASSET MANIFEST — EXACT FILENAMES
-   Save your files under /assets using EXACTLY these names.
-   Anything missing is handled with an in-universe fallback.
-   ------------------------------------------------------------ */
 const ASSETS = {
-  audio: {
-    // Music (user-supplied / licensed)
-    "music_formation": "assets/audio/music_formation_f1_theme.mp3",
-    "music_drs":       "assets/audio/music_drs_lose_my_mind.mp3",
-    "music_final":     "assets/audio/music_final_surili.mp3",
-    // Personal voice (user-supplied) — used in later phases
-    "archive_01":      "assets/audio/archive_recording_01.mp3",
-    "archive_02":      "assets/audio/archive_recording_02.mp3"
-  },
-  video: {
-    "love_letter":     "assets/video/love_letter.mp4"
-  },
-  images: {
-    // Pit Stop One sliding puzzle
-    "puzzle_sliding":  "assets/images/puzzle_sliding.jpg",
-    // Pit Stop Two memory-correlation (6 photos ↔ 6 memories)
-    "memory_01":       "assets/images/memory_01.jpg",
-    "memory_02":       "assets/images/memory_02.jpg",
-    "memory_03":       "assets/images/memory_03.jpg",
-    "memory_04":       "assets/images/memory_04.jpg",
-    "memory_05":       "assets/images/memory_05.jpg",
-    "memory_06":       "assets/images/memory_06.jpg"
-  }
+  audio:{ music_formation:"assets/audio/music_formation_f1_theme.mp3",
+          music_drs:"assets/audio/music_drs_lose_my_mind.mp3",
+          music_final:"assets/audio/music_final_surili.mp3",
+          archive_01:"assets/audio/archive_recording_01.mp3",
+          archive_02:"assets/audio/archive_recording_02.mp3" },
+  video:{ love_letter:"assets/video/love_letter.mp4" },
+  images:{ puzzle_sliding:"assets/images/puzzle_sliding.jpg",
+           memory_01:"assets/images/memory_01.jpg", memory_02:"assets/images/memory_02.jpg",
+           memory_03:"assets/images/memory_03.jpg", memory_04:"assets/images/memory_04.jpg",
+           memory_05:"assets/images/memory_05.jpg", memory_06:"assets/images/memory_06.jpg" }
 };
-
-/* Memory labels are intentionally generic placeholders (per B5). */
 const MEMORY_LABELS = ["Memory 1","Memory 2","Memory 3","Memory 4","Memory 5","Memory 6"];
 
-/* ------------------------------------------------------------
-   GLOBAL STATE  (single source of truth)
-   ------------------------------------------------------------ */
+/* ============================================================ STATE */
 const STATE = {
-  phase:        "BOOT",
-  segment:      null,
-  speed:        0,       // internal 0..100
-  displaySpeed: 0,       // km/h shown
-  gear:         "N",
-  rpm:          0,       // 0..1
-  drs:          false,
-  sector:       "FORMATION",
-  playerControl:false,
-  audioReady:   false,
-  config:       CONFIG,
-  checkpoints:  [],
-  archives:     { rec01:false, rec02:false }
+  phase:"BOOT", sector:"FORMATION", speed:0, displaySpeed:0, gear:"N", rpm:0, drs:false,
+  playerControl:false, audioReady:false, config:CONFIG,
+  checkpoints:[], archives:{rec01:false,rec02:false}
 };
+const SAVE_KEY="PROJECT_DRIVER_01_SUNDAY";
+const Save={ write(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({phase:STATE.phase,checkpoints:STATE.checkpoints,archives:STATE.archives}))}catch(e){}},
+  read(){try{const r=localStorage.getItem(SAVE_KEY);return r?JSON.parse(r):null}catch(e){return null}},
+  clear(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}} };
+if(location.search.includes("reset")) Save.clear();
 
-/* Phase machine — the canonical Sunday spine (two pit stops, three sectors). */
-const PHASES = [
-  "BOOT","SYSTEM_RESTORE","FORMATION_LAP","SECTOR_01","PITSTOP_01","SECTOR_02",
-  "PITSTOP_02","SECTOR_03","DRS_SEQUENCE","FINAL_STRAIGHT","FINISH_LINE",
-  "PODIUM","IDENTITY_REVEAL","LOVE_LETTER","MISSION_COMPLETE"
-];
-
-/* ------------------------------------------------------------
-   Save manager (Sunday-only; ?reset clears)
-   ------------------------------------------------------------ */
-const SAVE_KEY = "PROJECT_DRIVER_01_SUNDAY";
-const Save = {
-  write(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({
-    phase:STATE.phase, checkpoints:STATE.checkpoints, archives:STATE.archives
-  })); }catch(e){} },
-  read(){ try{ const r=localStorage.getItem(SAVE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } },
-  clear(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
-};
-if (location.search.includes("reset")) Save.clear();
-
-/* ------------------------------------------------------------
-   Motion / timing helpers
-   ------------------------------------------------------------ */
+/* ============================================================ helpers */
 const RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const A  = RM ? 0.4 : 1;              // scale narrative pacing when reduced-motion
-const sleep = ms => new Promise(r => setTimeout(r, Math.max(0, Math.round(ms * A))));
-const $  = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const A = RM?0.4:1;
+const sleep = ms => new Promise(r=>setTimeout(r, Math.max(0,Math.round(ms*A))));
+const clamp = (v,a,b)=>v<a?a:(v>b?b:v);
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const stage=$("#stage"), hud=$("#hud");
+function mount(html,cls){ stage.innerHTML=`<div class="screen ${cls||''} fade-in">${html}</div>`; return $(".screen",stage); }
+async function clearStage(){ const s=$(".screen",stage); if(s){s.classList.add("fade-out");await sleep(280);} stage.innerHTML=""; }
+async function type(el,text,speed=30){ el.textContent="";el.classList.add("caret");
+  if(RM){el.textContent=text;el.classList.remove("caret");return;}
+  for(let i=0;i<text.length;i++){el.textContent=text.slice(0,i+1);await sleep(speed);} el.classList.remove("caret"); }
+function setAccent(hex){ document.documentElement.style.setProperty("--accent",hex); }
 
-const stage = $("#stage");
-const hud   = $("#hud");
-
-function mount(html, left){
-  stage.innerHTML = `<div class="screen ${left?'left':''} fade-in">${html}</div>`;
-  return $(".screen", stage);
-}
-async function clearStage(){
-  const s = $(".screen", stage);
-  if (s){ s.classList.add("fade-out"); await sleep(280); }
-  stage.innerHTML = "";
-}
-async function type(el, text, speed=30){
-  el.textContent = ""; el.classList.add("caret");
-  if (RM){ el.textContent = text; el.classList.remove("caret"); return; }
-  for (let i=0;i<text.length;i++){ el.textContent = text.slice(0,i+1); await sleep(speed); }
-  el.classList.remove("caret");
-}
-function setAccent(hex){
-  document.documentElement.style.setProperty("--accent", hex);
-}
-
-/* ============================================================
-   AUDIO ENGINE  — procedural Web Audio (diegetic).
-   All boot / UI / engine / ambience sounds are synthesised so the
-   experience "sounds alive" even with zero audio files present.
-   Music/voice slots load real files when supplied, else stay silent.
-   ============================================================ */
-const Audio_ = (() => {
-  let ctx=null, master=null, ambientGain=null, musicGain=null, noiseBuf=null;
-  let engine=null, started=false;
-  const buffers = {};   // decoded user-supplied files (by key)
-
-  function init(){
-    if (ctx) return;
-    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch(e){ return; }
-    master = ctx.createGain();  master.gain.value = 0.9; master.connect(ctx.destination);
-    ambientGain = ctx.createGain(); ambientGain.gain.value = 0; ambientGain.connect(master);
-    musicGain   = ctx.createGain(); musicGain.gain.value   = 0; musicGain.connect(master);
-    const len = ctx.sampleRate * 2;
-    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
-    STATE.audioReady = true;
-  }
-  function resume(){ if (ctx && ctx.state === "suspended") ctx.resume(); }
-
-  /* ---- primitive tones ---- */
-  function tone(freq,dur,type="sine",vol=0.14,attack=0.005){
-    if(!ctx) return;
-    const t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain();
-    o.type=type; o.frequency.value=freq;
-    g.gain.setValueAtTime(0,t);
-    g.gain.linearRampToValueAtTime(vol,t+attack);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
-  }
-  function beep(){ tone(880,0.12,"sine",0.10); }
-  function beepHi(){ tone(1240,0.09,"sine",0.09); }
-  function confirm(){ tone(660,0.14,"sine",0.09); setTimeout(()=>tone(990,0.2,"sine",0.08),90); }
-  function click(){
-    if(!ctx) return; const t=ctx.currentTime;
-    const s=ctx.createBufferSource(); s.buffer=noiseBuf;
-    const hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=1900;
-    const g=ctx.createGain(); g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.03);
-    s.connect(hp); hp.connect(g); g.connect(master); s.start(t); s.stop(t+0.05);
-  }
-  function data(){ tone(1400+Math.random()*500,0.03,"square",0.025); }
-  function lightTone(){ tone(300,0.16,"square",0.05); }
-  function warn(){ tone(150,0.4,"sine",0.14,0.01); }
-
-  /* ---- ambient engineering bed (computer hum + air) ---- */
-  function startAmbient(){
-    if(!ctx || started) return; started=true;
-    [50,100].forEach((f,i)=>{
-      const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=f;
-      const g=ctx.createGain(); g.gain.value = i===0?0.05:0.022;
-      o.connect(g); g.connect(ambientGain); o.start();
-    });
-    const s=ctx.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
-    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=620; bp.Q.value=0.6;
-    const g=ctx.createGain(); g.gain.value=0.014;
-    s.connect(bp); bp.connect(g); g.connect(ambientGain); s.start();
-    const t=ctx.currentTime;
-    ambientGain.gain.cancelScheduledValues(t);
-    ambientGain.gain.setValueAtTime(0,t);
-    ambientGain.gain.linearRampToValueAtTime(0.9,t+2.0);
-  }
-
-  /* ---- procedural engine (idle → rev, RPM-driven) ---- */
-  function startEngine(){
-    if(!ctx || engine) return;
-    const t=ctx.currentTime;
-    const out=ctx.createGain(); out.gain.value=0; out.connect(master);
-    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=420; lp.connect(out);
-    const oscs=[];
-    [0.5,1,2].forEach((mult,i)=>{
-      const o=ctx.createOscillator(); o.type = i===2?"square":"sawtooth";
-      o.frequency.value=46*mult;
-      const g=ctx.createGain(); g.gain.value = i===0?0.5:(i===1?0.32:0.12);
-      o.connect(g); g.connect(lp); o.start(); oscs.push(o);
-    });
-    // combustion texture
-    const ns=ctx.createBufferSource(); ns.buffer=noiseBuf; ns.loop=true;
-    const nbp=ctx.createBiquadFilter(); nbp.type="bandpass"; nbp.frequency.value=140; nbp.Q.value=1.1;
-    const ng=ctx.createGain(); ng.gain.value=0.05;
-    ns.connect(nbp); nbp.connect(ng); ng.connect(lp); ns.start();
-    // idle lump LFO
-    const lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=11;
-    const lfoG=ctx.createGain(); lfoG.gain.value=60; lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
-    out.gain.linearRampToValueAtTime(0.16, t+0.5);
-    engine = { out, lp, oscs, base:46 };
-  }
-  function setRPM(v){                 // v: 0..1
-    STATE.rpm = v;
-    if(!ctx || !engine) return;
-    const t=ctx.currentTime;
-    const f = engine.base * (1 + v*7.5);
-    engine.oscs.forEach((o,i)=>{
-      const mult=[0.5,1,2][i];
-      o.frequency.setTargetAtTime(f*mult, t, 0.05);
-    });
-    engine.lp.frequency.setTargetAtTime(420 + v*2600, t, 0.05);
-    engine.out.gain.setTargetAtTime(0.16 + v*0.14, t, 0.06);
-  }
-  function starter(){                 // brief crank before ignition
-    if(!ctx) return;
-    const t=ctx.currentTime;
-    const o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.setValueAtTime(28,t);
-    o.frequency.linearRampToValueAtTime(70,t+0.7);
-    const g=ctx.createGain(); g.gain.setValueAtTime(0.001,t);
-    g.gain.linearRampToValueAtTime(0.12,t+0.1); g.gain.linearRampToValueAtTime(0.02,t+0.75);
-    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=180;
-    o.connect(bp); bp.connect(g); g.connect(master); o.start(t); o.stop(t+0.8);
-  }
-  function rev(){                     // quick throttle blip
-    if(!engine) return;
-    setRPM(0.7); setTimeout(()=>setRPM(0.12), 380);
-  }
-
-  /* ---- music slot loader (graceful) ---- */
-  async function loadMusic(key, url){
-    if(!ctx || buffers[key]) return !!buffers[key];
-    try{
-      const r = await fetch(url); if(!r.ok) return false;
-      const ab = await r.arrayBuffer();
-      buffers[key] = await ctx.decodeAudioData(ab);
-      return true;
-    }catch(e){ return false; }
-  }
-  function hasMusic(key){ return !!buffers[key]; }
+/* ============================================================ AUDIO ENGINE */
+const Audio_=(()=>{
+  let ctx=null,master=null,ambientGain=null,musicGain=null,noiseBuf=null,engine=null,started=false;
+  const buffers={};
+  function init(){ if(ctx)return; try{ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
+    ambientGain=ctx.createGain();ambientGain.gain.value=0;ambientGain.connect(master);
+    musicGain=ctx.createGain();musicGain.gain.value=0;musicGain.connect(master);
+    const len=ctx.sampleRate*2;noiseBuf=ctx.createBuffer(1,len,ctx.sampleRate);
+    const d=noiseBuf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    STATE.audioReady=true; }
+  function resume(){ if(ctx&&ctx.state==="suspended")ctx.resume(); }
+  function tone(f,dur,type="sine",vol=.14,att=.005){ if(!ctx)return;const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+att);
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02); }
+  const beep=()=>tone(880,.12,"sine",.10), beepHi=()=>tone(1240,.09,"sine",.09);
+  const confirm=()=>{tone(660,.14,"sine",.09);setTimeout(()=>tone(990,.2,"sine",.08),90);};
+  function click(){ if(!ctx)return;const t=ctx.currentTime;const s=ctx.createBufferSource();s.buffer=noiseBuf;
+    const hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.value=1900;const g=ctx.createGain();
+    g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.0001,t+.03);s.connect(hp);hp.connect(g);g.connect(master);s.start(t);s.stop(t+.05); }
+  const data=()=>tone(1400+Math.random()*500,.03,"square",.025), lightTone=()=>tone(300,.16,"square",.05), warn=()=>tone(150,.4,"sine",.14,.01);
+  function startAmbient(){ if(!ctx||started)return;started=true;
+    [50,100].forEach((f,i)=>{const o=ctx.createOscillator();o.type="sine";o.frequency.value=f;const g=ctx.createGain();g.gain.value=i===0?.05:.022;o.connect(g);g.connect(ambientGain);o.start();});
+    const s=ctx.createBufferSource();s.buffer=noiseBuf;s.loop=true;const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=620;bp.Q.value=.6;const g=ctx.createGain();g.gain.value=.014;
+    s.connect(bp);bp.connect(g);g.connect(ambientGain);s.start();
+    const t=ctx.currentTime;ambientGain.gain.cancelScheduledValues(t);ambientGain.gain.setValueAtTime(0,t);ambientGain.gain.linearRampToValueAtTime(.9,t+2); }
+  function startEngine(){ if(!ctx||engine)return;const t=ctx.currentTime;
+    const out=ctx.createGain();out.gain.value=0;out.connect(master);
+    const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.value=420;lp.connect(out);const oscs=[];
+    [0.5,1,2].forEach((m,i)=>{const o=ctx.createOscillator();o.type=i===2?"square":"sawtooth";o.frequency.value=46*m;const g=ctx.createGain();g.gain.value=i===0?.5:(i===1?.32:.12);o.connect(g);g.connect(lp);o.start();oscs.push(o);});
+    const ns=ctx.createBufferSource();ns.buffer=noiseBuf;ns.loop=true;const nbp=ctx.createBiquadFilter();nbp.type="bandpass";nbp.frequency.value=140;nbp.Q.value=1.1;const ng=ctx.createGain();ng.gain.value=.05;ns.connect(nbp);nbp.connect(ng);ng.connect(lp);ns.start();
+    const lfo=ctx.createOscillator();lfo.type="sine";lfo.frequency.value=11;const lg=ctx.createGain();lg.gain.value=60;lfo.connect(lg);lg.connect(lp.frequency);lfo.start();
+    out.gain.linearRampToValueAtTime(.16,t+.5);engine={out,lp,oscs,base:46}; }
+  function setRPM(v){ STATE.rpm=v; if(!ctx||!engine)return;const t=ctx.currentTime;const f=engine.base*(1+v*7.5);
+    engine.oscs.forEach((o,i)=>o.frequency.setTargetAtTime(f*[0.5,1,2][i],t,.05));
+    engine.lp.frequency.setTargetAtTime(420+v*2600,t,.05); engine.out.gain.setTargetAtTime(.16+v*.14,t,.06); }
+  function starter(){ if(!ctx)return;const t=ctx.currentTime;const o=ctx.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(28,t);o.frequency.linearRampToValueAtTime(70,t+.7);
+    const g=ctx.createGain();g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.12,t+.1);g.gain.linearRampToValueAtTime(.02,t+.75);
+    const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=180;o.connect(bp);bp.connect(g);g.connect(master);o.start(t);o.stop(t+.8); }
+  function rev(){ if(!engine)return;setRPM(.7);setTimeout(()=>setRPM(.12),380); }
+  async function loadMusic(key,url){ if(!ctx||buffers[key])return !!buffers[key];
+    try{const r=await fetch(url);if(!r.ok)return false;const ab=await r.arrayBuffer();buffers[key]=await ctx.decodeAudioData(ab);return true;}catch(e){return false;} }
+  const hasMusic=k=>!!buffers[k];
   let musicSrc=null;
-  function playMusic(key, {loop=true, vol=0.5, fade=2.5}={}){
-    if(!ctx || !buffers[key]) return false;
-    stopMusic(0.4);
-    const s=ctx.createBufferSource(); s.buffer=buffers[key]; s.loop=loop;
-    s.connect(musicGain);
-    const t=ctx.currentTime;
-    musicGain.gain.cancelScheduledValues(t);
-    musicGain.gain.setValueAtTime(musicGain.gain.value,t);
-    musicGain.gain.linearRampToValueAtTime(vol, t+fade);
-    s.start(); musicSrc=s; return true;
-  }
-  function stopMusic(fade=2){
-    if(!ctx || !musicSrc) return;
-    const t=ctx.currentTime, s=musicSrc; musicSrc=null;
-    musicGain.gain.cancelScheduledValues(t);
-    musicGain.gain.setValueAtTime(musicGain.gain.value,t);
-    musicGain.gain.linearRampToValueAtTime(0,t+fade);
-    try{ s.stop(t+fade+0.1); }catch(e){}
-  }
-
-  return { init,resume,startAmbient,startEngine,setRPM,starter,rev,
-           beep,beepHi,confirm,click,data,lightTone,warn,
-           loadMusic,hasMusic,playMusic,stopMusic };
+  function playMusic(key,{loop=true,vol=.5,fade=2.5}={}){ if(!ctx||!buffers[key])return false;stopMusic(.4);
+    const s=ctx.createBufferSource();s.buffer=buffers[key];s.loop=loop;s.connect(musicGain);const t=ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(vol,t+fade);s.start();musicSrc=s;return true; }
+  function stopMusic(fade=2){ if(!ctx||!musicSrc)return;const t=ctx.currentTime,s=musicSrc;musicSrc=null;
+    musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(0,t+fade);try{s.stop(t+fade+.1);}catch(e){} }
+  return {init,resume,startAmbient,startEngine,setRPM,starter,rev,beep,beepHi,confirm,click,data,lightTone,warn,loadMusic,hasMusic,playMusic,stopMusic};
 })();
 
-/* ============================================================
-   HUD controller (Phase-1 surface)
-   ============================================================ */
-const HUD = {
-  show(){ hud.classList.add("on"); },
-  light(sel){ const el=$(sel); if(el) el.classList.add("lit"); },
-  banner(text){ $("#mcVal").textContent = text; $("#mcBanner").classList.add("show"); },
-  radio(stateName, label){
-    const dot=$("#radioDot"); dot.className=""; dot.classList.add(stateName);
-    if(label) $("#radioTxt").textContent = label;
-  },
-  notify(text){
-    const n=$("#notify"); n.textContent=text; n.classList.add("show","lit");
-    clearTimeout(n._t); n._t=setTimeout(()=>n.classList.remove("show"), 2600);
-  },
-  telemetry(){
-    $("#tSurf").textContent = "41°C";
-    $("#tBias").textContent = "54.5%";
-    $("#tMode").textContent = "STANDARD";
-    $("#tSig").textContent  = "STRONG";
-    $("#tArch").textContent = "STABLE";
-  },
-  setSpeed(kmh){ $("#speed").textContent = Math.round(kmh); STATE.displaySpeed=kmh; },
-  setGear(g){ $("#gear").textContent = g; STATE.gear=g; },
-  setRPMbar(v){                       // v 0..1 drives shift lights
-    const lights=$$("#shift i"), n=Math.round(v*lights.length);
-    lights.forEach((el,i)=> el.classList.toggle("on", i<n));
-    $("#rpm").textContent = Math.round(v*15000);
-  },
-  sector(name){ $("#sectorCell").textContent=name; STATE.sector=name; }
+/* ============================================================ HUD */
+const HUD={
+  show(){hud.classList.add("on");},
+  light(sel){const el=$(sel);if(el)el.classList.add("lit");},
+  banner(t){$("#mcVal").textContent=t;$("#mcBanner").classList.add("show");},
+  radio(st,l){const d=$("#radioDot");d.className="";d.classList.add(st);if(l)$("#radioTxt").textContent=l;},
+  notify(t){const n=$("#notify");n.textContent=t;n.classList.add("show","lit");clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove("show"),2600);},
+  telemetry(o){o=o||{};$("#tSurf").textContent=o.surf||"41°C";$("#tBias").textContent=o.bias||"54.5%";
+    $("#tMode").textContent=o.mode||"STANDARD";$("#tSig").textContent=o.sig||"STRONG";$("#tArch").textContent=o.arch||"STABLE";},
+  setSpeed(k){$("#speed").textContent=Math.round(k);STATE.displaySpeed=k;},
+  setGear(g){$("#gear").textContent=g;STATE.gear=g;},
+  rpmBar(v){const L=$$("#shift i"),n=Math.round(v*L.length);L.forEach((el,i)=>el.classList.toggle("on",i<n));$("#rpm").textContent=Math.round(v*15000);},
+  sector(n){$("#sectorCell").textContent=n;STATE.sector=n;},
+  drs(on){STATE.drs=on;const c=$("#drsCell");c.classList.toggle("on",on);c.textContent=on?"DRS ●":"DRS";},
+  corner(dir,note){const c=$("#corner");if(!dir){c.classList.remove("show");return;}$("#cornerDir").textContent=dir;$("#cornerNote").textContent=note||"";c.classList.add("show");}
 };
 
-/* idle cockpit "breathing" — the rig is never perfectly static (RULE 019) */
-let breatheRAF=null;
-function startBreathing(){
-  if(RM) return;
-  const rig=$("#cockpit .rig"); if(!rig) return;
-  const t0=performance.now();
-  (function loop(now){
-    const t=(now-t0)/1000;
-    const amp = 0.7 + STATE.rpm*2.2;              // vibration grows with RPM
-    const x=Math.sin(t*2.1)*amp*0.4, y=Math.cos(t*3.3)*amp*0.5;
-    rig.style.transform=`translate(${x}px,${y}px)`;
-    breatheRAF=requestAnimationFrame(loop);
-  })(t0);
-}
+/* ============================================================ DRIVING ENGINE (Phase 2)
+   Canvas pseudo-3D road. Player controls lane + speed; route is on-rails & forgiving. */
+const Drive=(()=>{
+  const cv=$("#road"); let ctx=null,W=0,H=0,DPR=1;
+  const SEGLEN=200, RUMBLE=4, ROADW=2200, CAMH=1100, DRAW=150, CAMDEPTH=0.84;
+  let segs=[], trackLen=0;
+  let pos=0, playerX=0, speed=0, running=false, throttle=false, keyL=false, keyR=false;
+  let last=0, rafId=null, phaseCap=0.2, steerMul=0.4;
+  let milestones={}, fired={}, rival=null, drsZone=null, onFinish=null, cornerState={cur:null};
 
-/* ============================================================
-   BOOT / SYSTEM RESTORE SEQUENCE  (Phase A — Screens A01–A10)
-   ============================================================ */
+  /* ---- track build ---- */
+  function addSeg(curve){ const n=segs.length;
+    segs.push({index:n,curve,p1:{world:{z:n*SEGLEN},camera:{},screen:{}},p2:{world:{z:(n+1)*SEGLEN},camera:{},screen:{}},color:Math.floor(n/RUMBLE)%2}); }
+  const easeIn=(a,b,p)=>a+(b-a)*p*p, easeOut=(a,b,p)=>a+(b-a)*(1-(1-p)*(1-p)), easeIO=(a,b,p)=>a+(b-a)*(-Math.cos(p*Math.PI)/2+.5);
+  function road(enter,hold,leave,curve){ for(let i=0;i<enter;i++)addSeg(easeIn(0,curve,i/enter));
+    for(let i=0;i<hold;i++)addSeg(curve); for(let i=0;i<leave;i++)addSeg(easeIO(curve,0,i/leave)); }
+  function straight(n){ road(0,n,0,0); }
+  function mark(name){ milestones[name]=segs.length*SEGLEN; }
+
+  function build(){
+    segs=[]; milestones={}; fired={};
+    // Formation
+    straight(60); road(40,20,40,-2.2);
+    mark("green"); // GREEN → Sector One
+    // Sector One
+    straight(40); road(50,30,50,3.2); straight(30); road(40,30,40,-2.6);
+    mark("pit1");
+    straight(46);                         // pit stretch
+    mark("sector2");
+    // Sector Two
+    road(50,40,50,-3.6); straight(30); road(60,40,50,2.8); straight(24);
+    mark("pit2");
+    straight(46);
+    mark("sector3");
+    // Sector Three
+    road(40,30,40,2.4); straight(24); road(50,40,50,-3.0);
+    mark("drs");
+    straight(90);                         // DRS zone / final straight
+    mark("finish");
+    straight(40);
+    trackLen=segs.length*SEGLEN;
+    drsZone={start:milestones.drs,end:milestones.drs+90*SEGLEN};
+  }
+
+  function resize(){ DPR=Math.min(2,window.devicePixelRatio||1);
+    W=cv.clientWidth;H=cv.clientHeight; cv.width=W*DPR;cv.height=H*DPR;
+    ctx=cv.getContext("2d"); ctx.setTransform(DPR,0,0,DPR,0,0); }
+
+  function project(p,camX,camY,camZ){
+    p.camera.x=(p.world.x||0)-camX; p.camera.y=(p.world.y||0)-camY; p.camera.z=p.world.z-camZ;
+    p.screen.scale=CAMDEPTH/p.camera.z;
+    p.screen.x=Math.round(W/2 + p.screen.scale*p.camera.x*W/2);
+    p.screen.y=Math.round(H/2 - p.screen.scale*p.camera.y*H/2);
+    p.screen.w=Math.round(p.screen.scale*ROADW*W/2);
+  }
+  function findSeg(z){ return segs[Math.floor(z/SEGLEN)%segs.length]; }
+
+  function poly(x1,y1,x2,y2,x3,y3,x4,y4,col){ ctx.fillStyle=col;ctx.beginPath();
+    ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(x3,y3);ctx.lineTo(x4,y4);ctx.closePath();ctx.fill(); }
+
+  function renderSeg(s,prevY){
+    const p1=s.p1.screen,p2=s.p2.screen;
+    const grass = s.color?"#0e0c26":"#0b0920";
+    const rum   = s.color?"#E10600":"#f2f2f2";
+    const rd    = s.color?"#1b1e28":"#181b24";
+    // grass band
+    ctx.fillStyle=grass; ctx.fillRect(0,p2.y,W,(prevY-p2.y));
+    // rumble (wider road)
+    const r1=p1.w*1.18,r2=p2.w*1.18;
+    poly(p1.x-r1,p1.y,p1.x+r1,p1.y,p2.x+r2,p2.y,p2.x-r2,p2.y,rum);
+    // road
+    poly(p1.x-p1.w,p1.y,p1.x+p1.w,p1.y,p2.x+p2.w,p2.y,p2.x-p2.w,p2.y,rd);
+    // lane line (light segments only)
+    if(!s.color){ const l1=p1.w*.03,l2=p2.w*.03;
+      poly(p1.x-l1,p1.y,p1.x+l1,p1.y,p2.x+l2,p2.y,p2.x-l2,p2.y,"rgba(255,255,255,.5)"); }
+  }
+
+  function drawRival(){
+    if(!rival||!rival.active)return;
+    const s=findSeg(rival.z); const p={world:{z:rival.z,x:rival.x*ROADW},camera:{},screen:{}};
+    // camera at player
+    project(p, playerX*ROADW, CAMH, pos);
+    if(p.camera.z<=CAMDEPTH)return;
+    const w=p.screen.w*0.9, h=w*0.42, x=p.screen.x, y=p.screen.y;
+    ctx.fillStyle="#12131a"; ctx.fillRect(x-w/2,y-h,w,h);
+    ctx.fillStyle="#33384a"; ctx.fillRect(x-w/2,y-h*0.5,w,h*0.5);
+    ctx.fillStyle="#E10600"; ctx.fillRect(x-w/2,y-h*0.16,w,h*0.16);   // rear wing hint
+    ctx.fillStyle="#5B7CFF"; ctx.fillRect(x-w*0.14,y-h*0.9,w*0.28,h*0.2);
+  }
+
+  function renderRoad(){
+    if(!ctx)return;
+    ctx.clearRect(0,0,W,H);
+    const base=findSeg(pos), basePct=(pos%SEGLEN)/SEGLEN;
+    let x=0,dx=-(base.curve*basePct), maxy=H;
+    for(let n=0;n<DRAW;n++){
+      const s=segs[(base.index+n)%segs.length];
+      const looped=s.index<base.index;
+      const camZ=pos-(looped?trackLen:0);
+      project(s.p1, playerX*ROADW - x,        CAMH, camZ);
+      project(s.p2, playerX*ROADW - x - dx,   CAMH, camZ);
+      x+=dx; dx+=s.curve;
+      if(s.p1.camera.z<=CAMDEPTH || s.p2.screen.y>=maxy) continue;
+      renderSeg(s,maxy); maxy=s.p2.screen.y;
+    }
+    drawRival();
+  }
+
+  /* ---- cockpit reaction ---- */
+  function applyCockpit(){
+    const wheel=$("#wheelSvg");
+    if(wheel){ const rot=(playerX*7)+(keyL?-3:0)+(keyR?3:0);
+      wheel.style.transform=`rotate(${rot}deg)`; }
+    const rig=$("#cockpit .rig");
+    if(rig && !RM){ const t=performance.now()/1000; const vib=(0.5+STATE.rpm*2.2);
+      const lean=playerX*10;
+      rig.style.transform=`translate(${Math.sin(t*2.1)*vib*.4 - lean}px, ${Math.cos(t*3.3)*vib*.5 + (throttle?2:0)}px) rotate(${playerX*0.5}deg)`; }
+  }
+
+  /* ---- corner guidance ---- */
+  function updateCorner(){
+    // look ahead ~ 18 segments, average curve
+    const base=findSeg(pos); let sum=0;
+    for(let n=6;n<26;n++){ sum+=segs[(base.index+n)%segs.length].curve; }
+    const avg=sum/20;
+    let key=null,dir="",note="";
+    if(avg<-1.2){key="L";dir="LEFT";note="EARLY APEX";}
+    else if(avg>1.2){key="R";dir="RIGHT";note="EARLY APEX";}
+    else { // near/inside a corner just passed?
+      const here=base.curve;
+      if(Math.abs(here)>1.4){key="HOLD";dir=here<0?"LEFT":"RIGHT";note="HOLD SPEED";}
+    }
+    if(key!==cornerState.cur){
+      cornerState.cur=key;
+      if(key){ HUD.corner(dir,note); } else { HUD.corner(null); }
+    }
+  }
+
+  /* ---- gears / rpm ---- */
+  function updateGears(){
+    const ratio=clamp(speed,0,1);                 // 0..1
+    const gearN=clamp(Math.floor(ratio*8),0,7);
+    HUD.setGear(String(gearN+1));
+    const within=(ratio*8)-gearN;                 // 0..1 within gear
+    const rpm=0.25+within*0.75;                   // idle-ish floor
+    HUD.rpmBar(ratio<0.02?0.12:rpm);
+    Audio_.setRPM(clamp(ratio*1.05,0.1,1));
+    // gear kick
+    if(Drive._lastGear!==undefined && Drive._lastGear!==gearN){ Audio_.click(); }
+    Drive._lastGear=gearN;
+  }
+
+  /* ---- speed → display km/h ---- */
+  function displayKmh(){ return Math.round(speed*340); }
+
+  /* ---- milestone events ---- */
+  function checkMilestones(){
+    for(const [name,z] of Object.entries(milestones)){
+      if(!fired[name] && pos>=z){ fired[name]=true; onMilestone(name); }
+    }
+    // finish
+    if(!fired.__finish && pos>=trackLen-40*SEGLEN){ fired.__finish=true; finish(); }
+    // mini-circuit progress
+    const car=$("#rbCar"); if(car){ const t=clamp(pos/trackLen,0,1);
+      // move marker along a rough param of the path (visual only)
+      const path=$("#rbRing"); if(path){ const L=path.getTotalLength(); const pt=path.getPointAtLength(t*L);
+        car.setAttribute("cx",pt.x);car.setAttribute("cy",pt.y);} }
+  }
+  function onMilestone(name){
+    switch(name){
+      case "green": greenLight(); break;
+      case "pit1":  pitSequence(1); break;
+      case "sector2": setSector("SECTOR 2", 0.60, 0.70); MC("Sector two. You're finding the rhythm now."); break;
+      case "pit2":  pitSequence(2); break;
+      case "sector3": setSector("SECTOR 3", 0.75, 0.85); sector3Intro(); break;
+      case "drs":   drsAvailable(); break;
+      case "finish": /* handled by __finish */ break;
+    }
+  }
+
+  function MC(text){ HUD.radio("speaking","Radio · Incoming"); HUD.banner(STATE.sector); HUD.notify(text.length>34?"MISSION UPDATED":text);
+    setTimeout(()=>HUD.radio("idle","Radio · Standby"),1400); }
+
+  function setSector(label,cap,steer){ STATE.sector=label; HUD.sector(label); HUD.banner(label); phaseCap=cap; steerMul=steer; }
+
+  async function greenLight(){
+    HUD.notify("GREEN · GREEN · GREEN"); Audio_.beepHi();
+    setSector("SECTOR 1",0.45,0.55);
+    MC("Evaluation lap is live. Sector one.");
+  }
+
+  async function sector3Intro(){
+    // telemetry loss beat (light version; full narrative is Phase 4)
+    $("#tSig").textContent="LOST"; $("#tSig").style.color="var(--err)";
+    $("#tArch").textContent="—";
+    HUD.radio("speaking","Signal · Lost");
+    HUD.notify("PROCEED ON INSTINCT");
+    setTimeout(()=>HUD.radio("idle","Radio · Standby"),1600);
+  }
+
+  async function drsAvailable(){
+    HUD.drs(true); HUD.notify("DRS ENABLED"); Audio_.beepHi();
+    HUD.radio("speaking","Radio · Incoming");
+    setTimeout(()=>HUD.radio("idle","Radio · Standby"),1400);
+    // spawn rival ahead
+    rival={z:pos+14*SEGLEN, x:0.35, active:true};
+    STATE._drsArmed=true;
+  }
+
+  function pitSequence(num){
+    running=false; STATE.playerControl=false; throttle=false;
+    Audio_.setRPM(0.1); HUD.setSpeed(0); speed=0;
+    (async()=>{
+      await runPitStop(num);                 // Phase 3 · puzzle + archive recording
+      running=true; STATE.playerControl=true; last=performance.now();
+      MC("Back on track. Continue.");
+    })();
+  }
+
+  async function finish(){
+    running=false; STATE.playerControl=false; throttle=false;
+    Audio_.stopMusic(2.5);
+    HUD.drs(false); HUD.corner(null);
+    // settle
+    const settle=setInterval(()=>{ speed*=0.86; HUD.setSpeed(displayKmh());
+      Audio_.setRPM(clamp(speed,0.08,1)); if(speed<0.02){clearInterval(settle);speed=0;HUD.setSpeed(0);Audio_.setRPM(0.08);} },60);
+    HUD.banner("Finish Line"); HUD.notify("CHECKPOINT · FINISH");
+    STATE.phase="FINISH_LINE"; Save.write();
+    await sleep(1600);
+    if(onFinish) onFinish();
+  }
+
+  /* ---- main loop ---- */
+  function frame(now){
+    rafId=requestAnimationFrame(frame);
+    const dt=Math.min(0.05,(now-last)/1000||0.016); last=now;
+    if(running){
+      // throttle / speed (ease-out toward cap)
+      if(throttle){ speed += (phaseCap-speed)*2.4*dt; }
+      else { speed -= speed*1.4*dt; if(speed<0)speed=0; }
+      // DRS boost
+      if(STATE._drsArmed && drsZone && pos>=drsZone.start && pos<drsZone.end && throttle){
+        speed += (1.0-speed)*1.8*dt;
+        $("#blur").style.opacity=String(clamp((speed-0.7)*2,0,0.9));
+        if(!STATE._drsMusic){ STATE._drsMusic=true;
+          if(Audio_.hasMusic("music_drs")) Audio_.playMusic("music_drs",{vol:.5,fade:0.6,loop:true}); }
+      } else { if($("#blur").style.opacity!=="0") $("#blur").style.opacity=String(clamp((speed-0.9)*3,0,0.5)); }
+      // steering (velocity-based, speed-scaled, forgiving)
+      const sp=clamp(speed,0.05,1);
+      if(keyL) playerX -= 1.5*steerMul*dt*sp;
+      if(keyR) playerX += 1.5*steerMul*dt*sp;
+      if(!keyL && !keyR) playerX += (0-playerX)*3*dt;      // ease to centre
+      // gentle centrifugal on corners
+      const cs=findSeg(pos); playerX -= cs.curve*0.00022*sp;
+      playerX=clamp(playerX,-1.3,1.3);
+      // advance
+      pos += speed*12000*dt;
+      if(pos>=trackLen) pos=trackLen-1;
+      // rival advance + overtake
+      if(rival&&rival.active){ rival.z += 0.62*12000*dt;
+        if(pos > rival.z-1.5*SEGLEN){ rival.active=false; HUD.notify("POSITION GAINED"); Audio_.beepHi(); } }
+      updateGears(); updateCorner(); checkMilestones();
+      HUD.setSpeed(displayKmh());
+    }
+    renderRoad(); applyCockpit();
+  }
+
+  /* ---- public ---- */
+  function bindKeys(){
+    window.addEventListener("keydown",onKey); window.addEventListener("keyup",onKeyUp);
+  }
+  function onKey(e){ if(["ArrowLeft","ArrowRight","Space"," "].includes(e.code)||e.key===" ")e.preventDefault();
+    if(e.code==="ArrowLeft")keyL=true; if(e.code==="ArrowRight")keyR=true; if(e.code==="Space")throttle=true; }
+  function onKeyUp(e){ if(e.code==="ArrowLeft")keyL=false; if(e.code==="ArrowRight")keyR=false; if(e.code==="Space")throttle=false; }
+
+  return {
+    init(){ build(); resize(); window.addEventListener("resize",resize); bindKeys();
+      cv.classList.add("on"); $("#haze").classList.add("on"); $("#hills").classList.add("drive"); $("#track").classList.remove("on"); },
+    startLoop(){ if(rafId)return; last=performance.now(); rafId=requestAnimationFrame(frame); },
+    enableFormation(){ running=true; STATE.playerControl=true; phaseCap=0.2; steerMul=0.4; STATE.sector="FORMATION"; HUD.sector("FORMATION"); },
+    setFinishHandler(fn){ onFinish=fn; },
+    // expose for coaching
+    get pos(){return pos;}, get speed(){return speed;},
+    forceThrottleHint(){ return throttle; }, get keyL(){return keyL;}, get keyR(){return keyR;}
+  };
+})();
+
+/* ============================================================ BOOT SEQUENCE */
 async function runBoot(){
-
-  /* A01 — black screen, hum fades in */
-  STATE.phase="SYSTEM_RESTORE";
-  Audio_.startAmbient();
+  STATE.phase="SYSTEM_RESTORE"; Audio_.startAmbient();
   await sleep(2600);
+  let s=mount(`<div class="mono" id="l1" style="font-size:14px"></div><div class="mono" id="l2" style="font-size:13px"></div>`);
+  Audio_.click(); await type($("#l1",s),"MISSION SAVE DETECTED",34); await sleep(400); Audio_.data();
+  await type($("#l2",s),"VERIFYING…",34); await sleep(900);
 
-  /* A02 — Mission Control boots */
-  let s = mount(`<div class="mono" id="l1" style="font-size:14px"></div>
-                 <div class="mono" id="l2" style="font-size:13px"></div>`);
-  Audio_.click();
-  await type($("#l1",s), "MISSION SAVE DETECTED", 34);
-  await sleep(400); Audio_.data();
-  await type($("#l2",s), "VERIFYING…", 34);
-  await sleep(900);
-
-  /* A03 — restore lines */
   await clearStage();
-  s = mount(`<div class="eyebrow">System Restore</div><div class="loadlist" id="ll"></div>`);
-  const restore = ["RESTORING DRIVER PROFILE","RESTORING TELEMETRY","RESTORING ARCHIVE","RESTORING CALIBRATION"];
+  s=mount(`<div class="eyebrow">System Restore</div><div class="loadlist" id="ll"></div>`);
   const ll=$("#ll",s);
-  for (const label of restore){
-    const row=document.createElement("div"); row.className="li";
-    row.innerHTML=`<span>${label}</span><span class="st"></span>`; ll.appendChild(row);
-    requestAnimationFrame(()=>row.classList.add("in"));
-    Audio_.data(); await sleep(520);
-    row.querySelector(".st").textContent="✓"; row.classList.add("done"); Audio_.beepHi();
-    await sleep(260);
+  for(const label of ["RESTORING DRIVER PROFILE","RESTORING TELEMETRY","RESTORING ARCHIVE","RESTORING CALIBRATION"]){
+    const row=document.createElement("div");row.className="li";row.innerHTML=`<span>${label}</span><span class="st"></span>`;ll.appendChild(row);
+    requestAnimationFrame(()=>row.classList.add("in")); Audio_.data(); await sleep(520);
+    row.querySelector(".st").textContent="✓";row.classList.add("done");Audio_.beepHi(); await sleep(260);
   }
   await sleep(700);
 
-  /* A04 — driver recognition */
   await clearStage();
-  s = mount(`<div class="eyebrow">Profile Found</div>
-             <div class="title" style="font-size:clamp(30px,6vw,64px)">DRIVER 01</div>
-             <div class="mono ok" style="font-size:13px">STATUS · VERIFIED</div>`);
-  Audio_.confirm();
-  await sleep(2000);
+  s=mount(`<div class="eyebrow">Profile Found</div><div class="title" style="font-size:clamp(30px,6vw,64px)">DRIVER 01</div><div class="mono ok" style="font-size:13px">STATUS · VERIFIED</div>`);
+  Audio_.confirm(); await sleep(2000);
   await clearStage();
-  s = mount(`<div class="mono caret" id="l" style="font-size:14px"></div>`);
-  await type($("#l",s), "LOADING RACE DAY…", 30);
-  await sleep(700);
+  s=mount(`<div class="mono caret" id="l" style="font-size:14px"></div>`); await type($("#l",s),"LOADING RACE DAY…",30); await sleep(700);
 
-  /* A05 — track loading (engineering stages, not %) */
   await clearStage();
-  s = mount(`<div class="eyebrow">Loading Circuit Environment</div>
-             <div style="display:flex;flex-direction:column;gap:18px;width:100%;max-width:440px" id="stages"></div>`);
-  const stages=[["TRACK GEOMETRY","Red Bull Ring · Spielberg"],["WEATHER","Dry · Sunset"],
-                ["VEHICLE","RB · Power Unit"],["HUD","Cockpit Display"],["MISSION CONTROL","Uplink"]];
+  s=mount(`<div class="eyebrow">Loading Circuit Environment</div><div style="display:flex;flex-direction:column;gap:18px;width:100%;max-width:440px" id="stages"></div>`);
   const host=$("#stages",s);
-  for (const [name,detail] of stages){
-    const row=document.createElement("div"); row.className="stagerow";
-    row.innerHTML=`<div class="top"><span class="name">${name}</span><span>${detail}</span></div>
-                   <div class="bar"><i></i></div>`;
-    host.appendChild(row); requestAnimationFrame(()=>row.classList.add("in"));
-    Audio_.click(); await sleep(120);
-    row.querySelector("i").style.width="100%";
-    await sleep(560); Audio_.beepHi();
-    row.querySelector(".top span:last-child").innerHTML=`<span class="ok" style="color:var(--ok)">Loaded</span>`;
-    await sleep(200);
+  for(const [name,detail] of [["TRACK GEOMETRY","Red Bull Ring · Spielberg"],["WEATHER","Dry · Sunset"],["VEHICLE","RB · Power Unit"],["HUD","Cockpit Display"],["MISSION CONTROL","Uplink"]]){
+    const row=document.createElement("div");row.className="stagerow";
+    row.innerHTML=`<div class="top"><span class="name">${name}</span><span>${detail}</span></div><div class="bar"><i></i></div>`;
+    host.appendChild(row);requestAnimationFrame(()=>row.classList.add("in"));Audio_.click();await sleep(120);
+    row.querySelector("i").style.width="100%"; await sleep(560); Audio_.beepHi();
+    row.querySelector(".top span:last-child").innerHTML=`<span style="color:var(--ok)">Loaded</span>`; await sleep(200);
   }
   await sleep(600);
 
-  /* A06 — team skin: accent resolves to Red Bull */
   await clearStage();
-  s = mount(`<div class="eyebrow" id="tp">Team Profile Detected</div>
-             <div class="subtitle" id="tn">Loading Team Environment…</div>`);
+  s=mount(`<div class="eyebrow" id="tp">Team Profile Detected</div><div class="subtitle" id="tn">Loading Team Environment…</div>`);
   await sleep(900);
-  // reveal the sunset scene + resolve accent to Red Bull blue
-  $("#sky").classList.add("on");
-  $("#hills").classList.add("on");
-  await sleep(400);
-  setAccent("#1E41FF");                          // Red Bull — hardcoded team
-  Audio_.confirm();
-  $("#tn",s).textContent = "RED BULL RACING";
-  $("#tn",s).style.color = "var(--rb-blue-300)";
-  await sleep(1400);
+  $("#sky").classList.add("on"); $("#hills").classList.add("on"); await sleep(400);
+  setAccent("#1E41FF"); Audio_.confirm();
+  $("#tn",s).textContent="RED BULL RACING"; $("#tn",s).style.color="var(--rb-blue-300)"; await sleep(1400);
 
-  /* A07 — mission brief (first spoken dialogue) */
   await clearStage();
-  $("#track").classList.add("on");
-  $("#atmos").classList.add("on");
-  s = mount(`<div class="eyebrow">Mission Brief</div>
-             <div class="brief">
-               <p id="b1"></p><p id="b2"></p><p id="b3"></p><p id="b4"></p>
-             </div>`, true);
+  $("#track").classList.add("on"); $("#atmos").classList.add("on");
+  s=mount(`<div class="eyebrow">Mission Brief</div><div class="brief"><p id="b1"></p><p id="b2"></p><p id="b3"></p><p id="b4"></p></div>`,"left");
   HUD.radio("speaking","Radio · Incoming");
-  await type($("#b1",s), "Driver 01. Final evaluation authorised.", 26);
-  await sleep(300);
-  await type($("#b2",s), "One lap. Three sectors. Two pit stops.", 26);
-  await sleep(300);
-  await type($("#b3",s), "This is the last assessment. Finish the race.", 26);
-  await sleep(400);
-  await type($("#b4",s), "Proceed to formation lap.", 26);
-  HUD.radio("idle","Radio · Standby");
-  await sleep(1100);
+  await type($("#b1",s),"Driver 01. Final evaluation authorised.",26); await sleep(300);
+  await type($("#b2",s),"One lap. Three sectors. Two pit stops.",26); await sleep(300);
+  await type($("#b3",s),"This is the last assessment. Finish the race.",26); await sleep(400);
+  await type($("#b4",s),"Proceed to formation lap.",26);
+  HUD.radio("idle","Radio · Standby"); await sleep(1100);
 
-  /* A08 — cockpit fade-in + HUD power-on self-test */
   await clearStage();
-  $("#cockpit").classList.add("on");
-  startBreathing();
-  await sleep(600);
+  $("#cockpit").classList.add("on"); await sleep(600);
   HUD.show();
-  // sequential module illumination (Motion Bible: never all at once)
-  const seq=[
-    ["#telemetry", ()=>HUD.telemetry()],
-    ["#cluster",   ()=>{ selfTestCluster(); }],
-    ["#radio",     ()=>HUD.radio("idle","Radio · Standby")],
-    ["#miniCircuit", ()=>{}],
-    ["#mcBanner",  ()=>HUD.banner("Formation Lap")]
-  ];
-  for (const [sel,fn] of seq){ HUD.light(sel); Audio_.beepHi(); fn(); await sleep(420); }
+  for(const [sel,fn] of [["#telemetry",()=>HUD.telemetry()],["#cluster",()=>selfTest()],["#radio",()=>HUD.radio("idle","Radio · Standby")],["#miniCircuit",()=>{}],["#mcBanner",()=>HUD.banner("Formation Lap")]]){
+    HUD.light(sel); Audio_.beepHi(); fn(); await sleep(420);
+  }
   await sleep(700);
 
-  /* A09 — engine ignition */
-  s = mount(`<div class="mono" id="ig" style="font-size:14px"></div>`);
-  HUD.radio("speaking","Radio · Incoming");
-  await type($("#ig",s), "Ignition.", 40);
-  HUD.radio("idle","Radio · Standby");
-  Audio_.starter();
-  await sleep(800);
-  Audio_.startEngine();
-  Audio_.setRPM(0.12);
-  HUD.setGear("N"); HUD.setRPMbar(0.12); HUD.setSpeed(0);
-  await clearStage();
-  await sleep(900);
+  s=mount(`<div class="mono" id="ig" style="font-size:14px"></div>`);
+  HUD.radio("speaking","Radio · Incoming"); await type($("#ig",s),"Ignition.",40); HUD.radio("idle","Radio · Standby");
+  Audio_.starter(); await sleep(800); Audio_.startEngine(); Audio_.setRPM(0.12);
+  HUD.setGear("N"); HUD.rpmBar(0.12); HUD.setSpeed(0);
+  await clearStage(); await sleep(700);
 
-  /* A10 — formation lap countdown */
-  s = mount(`<div class="count-label">Formation Lap</div>
-             <div class="lights" id="lights"></div>
-             <div id="count" class="num" style="opacity:0"></div>`);
-  const L=$("#lights",s); const cols=[];
-  for(let i=0;i<5;i++){ const c=document.createElement("div"); c.className="lcol";
-    c.innerHTML=`<div class="light"></div><div class="light"></div>`; L.appendChild(c); cols.push(c); }
+  // countdown
+  s=mount(`<div class="count-label">Formation Lap</div><div class="lights" id="lights"></div><div id="count" class="num" style="opacity:0"></div>`);
+  const L=$("#lights",s),cols=[];
+  for(let i=0;i<5;i++){const c=document.createElement("div");c.className="lcol";c.innerHTML=`<div class="light"></div><div class="light"></div>`;L.appendChild(c);cols.push(c);}
   await sleep(500);
-  for(let i=0;i<5;i++){ cols[i].querySelectorAll(".light").forEach(x=>x.classList.add("on"));
-    Audio_.lightTone(); await sleep(360); }
+  for(let i=0;i<5;i++){cols[i].querySelectorAll(".light").forEach(x=>x.classList.add("on"));Audio_.lightTone();await sleep(360);}
   await sleep(500);
-  const cEl=$("#count",s); cEl.style.opacity="1";
-  for (const n of ["3","2","1"]){
-    cEl.textContent=n; Audio_.beep();
-    if(n==="1"){ Audio_.rev(); }
-    await sleep(760);
-  }
-  // lights out → GO
+  const cEl=$("#count",s);cEl.style.opacity="1";
+  for(const n of ["3","2","1"]){cEl.textContent=n;Audio_.beep();if(n==="1")Audio_.rev();await sleep(760);}
   L.querySelectorAll(".light").forEach(x=>x.classList.remove("on"));
-  cEl.textContent="GO"; cEl.style.color="var(--rb-blue-300)";
-  Audio_.beepHi();
-  // Map B: F1 Theme begins on the formation lap (if the file is present)
-  if (Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:0.42,fade:3});
-  await sleep(900);
+  cEl.textContent="GO";cEl.style.color="var(--rb-blue-300)";Audio_.beepHi();
+  if(Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:.4,fade:3});
+  await sleep(700);
+  await clearStage();
 
-  /* Phase-1 boundary: hand control to the (future) Driving Engine. */
-  await enterFormationHold();
+  startDriving();
 }
 
-/* HUD speed cluster self-test: sweep RPM + speed once */
-function selfTestCluster(){
-  let v=0; const up=setInterval(()=>{ v+=0.09; HUD.setRPMbar(Math.min(1,v));
-    HUD.setSpeed(Math.min(340, v*340));
-    if(v>=1){ clearInterval(up); const dn=setInterval(()=>{ v-=0.12; HUD.setRPMbar(Math.max(0,v));
-      HUD.setSpeed(Math.max(0,v*340)); if(v<=0){ clearInterval(dn); HUD.setRPMbar(0.12); HUD.setSpeed(0);} },40); }
-  },40);
-}
+function selfTest(){ let v=0;const up=setInterval(()=>{v+=.09;HUD.rpmBar(Math.min(1,v));HUD.setSpeed(Math.min(340,v*340));
+  if(v>=1){clearInterval(up);const dn=setInterval(()=>{v-=.12;HUD.rpmBar(Math.max(0,v));HUD.setSpeed(Math.max(0,v*340));
+  if(v<=0){clearInterval(dn);HUD.rpmBar(0.12);HUD.setSpeed(0);}},40);}},40); }
 
-/* ------------------------------------------------------------
-   Formation hold — graceful end-of-Phase-1 state.
-   Cockpit is live and idling on the grid; driving arrives in Phase 2.
-   ------------------------------------------------------------ */
-async function enterFormationHold(){
+/* ============================================================ DRIVING FLOW */
+async function startDriving(){
   STATE.phase="FORMATION_LAP";
-  STATE.playerControl=false;
-  HUD.banner("Formation Lap");
-  HUD.sector("FORMATION");
-  HUD.setGear("1");
-  Audio_.setRPM(0.18); HUD.setRPMbar(0.18);
+  Drive.init(); Drive.startLoop();
+  Drive.setFinishHandler(onFinishReached);
+
+  // coach the controls one at a time (teach before required)
+  HUD.banner("Formation Lap"); HUD.sector("FORMATION");
+  let s=mount(`<div class="hint" id="h1">Use <b>← / →</b> to steer</div>`,"top");
+  Drive.enableFormation();
+  // wait for a steer input
+  await waitFor(()=> Drive.keyL || Drive.keyR, 6000);
+  await clearStage();
+  s=mount(`<div class="hint" id="h2">Hold <b>SPACE</b> to accelerate</div>`,"top");
+  await waitFor(()=> Drive.forceThrottleHint(), 6000);
+  await clearStage();
   HUD.notify("SYSTEMS ONLINE");
-  Save.write();
-  await sleep(600);
-  // in-universe standby (no immersion break)
-  mount(`<div class="eyebrow" style="opacity:.8">Standing By</div>
-         <div class="subtitle" style="letter-spacing:.16em">Formation Lap · Grid Armed</div>
-         <div class="mono" style="font-size:12px;color:var(--dim)">Awaiting green · Driving Engine online in Phase 02</div>`);
-  // gentle idle pulse on the mini-circuit car marker
-  const car=$("#rbCar"); let t0=performance.now();
-  (function pulse(now){ if(!car) return; const o=0.6+0.4*Math.sin((now-t0)/500);
-    car.setAttribute("opacity", o.toFixed(2)); requestAnimationFrame(pulse); })(t0);
+  // from here, milestones drive the rest (green flag, sectors, pits, DRS, finish)
 }
 
-/* ============================================================
-   GATE → BOOT   (audio unlock requires a user gesture)
-   ============================================================ */
-$("#authBtn").addEventListener("click", async () => {
-  const gate=$("#gate");
-  $("#gateStatus").textContent = "Status · Connecting";
+function waitFor(cond, timeout){ return new Promise(res=>{
+  const t0=performance.now();
+  (function chk(){ if(cond()||performance.now()-t0>timeout) return res();
+    requestAnimationFrame(chk); })();
+}); }
+
+async function onFinishReached(){
+  // Phase-2 boundary: podium / identity reveal / love letter arrive in Phase 4.
+  await clearStage();
+  mount(`<div class="eyebrow">Simulation</div>
+         <div class="title">Finish Line</div>
+         <div class="mono" style="font-size:12px;color:var(--dim)">Lap complete · Podium & reveal online in Phase 04</div>`);
+  HUD.banner("Mission Status");
+  STATE.phase="FINISH_LINE"; Save.write();
+}
+
+/* ============================================================ GATE → BOOT */
+$("#authBtn").addEventListener("click", async ()=>{
+  $("#gateStatus").textContent="Status · Connecting";
   Audio_.init(); Audio_.resume(); Audio_.confirm();
-  // preload the formation music slot in the background (no-op if absent)
-  Audio_.loadMusic("music_formation", ASSETS.audio.music_formation);
-  gate.classList.add("hide");
-  await sleep(760);
-  gate.style.display="none";
+  Audio_.loadMusic("music_formation",ASSETS.audio.music_formation);
+  Audio_.loadMusic("music_drs",ASSETS.audio.music_drs);
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}   // ensure Orbitron loaded (fixes glyph box)
+  $("#gate").classList.add("hide"); await sleep(760); $("#gate").style.display="none";
   runBoot();
 });
+window.addEventListener("keydown",(e)=>{ if(e.code==="Enter" && !$("#gate").classList.contains("hide")) $("#authBtn").click(); });
+</script>
 
-/* Enter acts as a keyboard alias for the primary on-screen action. */
-window.addEventListener("keydown", (e)=>{
-  if (e.code==="Enter" && !$("#gate").classList.contains("hide")){ $("#authBtn").click(); }
-});
+<script>
+"use strict";
+/* ============================================================
+   PHASE 3 — GAMEPLAY · Pit-stop puzzles + archive recordings
+   (globals from the first script are shared across classic <script> tags)
+   ============================================================ */
+
+/* ---- authored content ---- */
+const SLIDING_TEXT = "The blurriest photo of our story gave us the clearest racing line. I flirted with you once, and somehow, in that moment, you became mine forever.";
+const ARCHIVE_TITLES = ["FORMATION LAP","TEAM RADIO","SYNCHRONIZED PACE","PARC FERMÉ","GARAGE VISION","GREEN FLAG"];
+const MEMORY_CAPTIONS = [
+  "Every championship has a messy formation lap. Little did we know ours was leading us to forever.",
+  "When life waved the yellow flags, you were always the voice on my team radio reminding me to keep racing.",
+  "Some partnerships chase pole position; ours simply found the perfect holy racing line together.",
+  "The most peaceful moment of every race is knowing you've already reached the place you belong.",
+  "Somewhere between the garage and the finish line, we accidentally caught a glimpse of our future together.",
+  "This wasn't just the start of a new season but also the green flag to the rest of our lives."
+];
+
+/* ---- asset helpers (graceful) ---- */
+function loadImage(url){ return new Promise(res=>{ if(!url)return res(false); const im=new Image();
+  im.onload=()=>res(true); im.onerror=()=>res(false); im.src=url; }); }
+function loadArchiveAudio(url){ return new Promise(res=>{ if(!url)return res(null);
+  const a=new Audio(); a.preload="auto"; let done=false;
+  const ok=()=>{ if(!done){done=true;res(a);} }; const no=()=>{ if(!done){done=true;res(null);} };
+  a.oncanplaythrough=ok; a.onerror=no; a.src=url;
+  setTimeout(()=>{ if(!done){done=true;res(a.readyState>=2?a:null);} },4000); }); }
+
+/* ---- Pit Stop One · sliding puzzle (3x3, click-to-slide, no-fail) ---- */
+function slidingPuzzle(host, url){
+  return new Promise(async resolve=>{
+    const ok = await loadImage(url);
+    host.innerHTML = `<div class="pit-sub">Reassemble the recovered fragment.</div>
+      <div class="slide-grid preview" id="grid"></div>
+      <div class="pit-sub" id="sstat" style="min-height:1.2em"></div>`;
+    const grid = host.querySelector("#grid");
+    const tiles=[]; for(let i=0;i<9;i++){ const t=document.createElement("div"); t.className="tile"; grid.appendChild(t); tiles.push(t); }
+    let pieces=[0,1,2,3,4,5,6,7,8], blank=8;
+    function bg(v){ const r=Math.floor(v/3), c=v%3;
+      if(ok) return `background-image:url('${url}');background-position:${c*50}% ${r*50}%;`;
+      const hue=208+v*7; return `background:linear-gradient(135deg,hsl(${hue} 42% 22%),hsl(${hue} 52% 12%));`; }
+    function neighbors(i){ const r=Math.floor(i/3),c=i%3,a=[]; if(r>0)a.push(i-3); if(r<2)a.push(i+3); if(c>0)a.push(i-1); if(c<2)a.push(i+1); return a; }
+    function solved(){ return pieces.every((v,i)=>v===i); }
+    function render(){
+      const isSolved=grid.classList.contains("solved");
+      for(let cell=0;cell<9;cell++){ const v=pieces[cell], t=tiles[cell];
+        if(v===8 && !isSolved){ t.className="tile blank"; t.setAttribute("style",""); t.innerHTML=""; }
+        else { t.className="tile"; t.setAttribute("style",bg(v)); t.innerHTML = ok?"":`<span class="tn">${v+1}</span>`; } }
+    }
+    render();
+    await sleep(1600);                                   // blurred/whole preview
+    grid.classList.remove("preview");
+    let b=8; for(let k=0;k<80;k++){ const ns=neighbors(b); const nb=ns[Math.floor(Math.random()*ns.length)];
+      [pieces[b],pieces[nb]]=[pieces[nb],pieces[b]]; b=nb; }
+    blank=pieces.indexOf(8); render();
+    tiles.forEach((t,cell)=> t.addEventListener("click",()=>{
+      if(grid.classList.contains("preview")||grid.classList.contains("solved"))return;
+      if(neighbors(blank).includes(cell)){ [pieces[blank],pieces[cell]]=[pieces[cell],pieces[blank]]; blank=cell; Audio_.click(); render();
+        if(solved()) onSolved(); }
+    }));
+    async function onSolved(){
+      grid.classList.add("solved"); render(); Audio_.confirm();
+      const scan=document.createElement("div"); scan.className="scan run"; grid.appendChild(scan);
+      host.querySelector("#sstat").innerHTML=`<span style="color:var(--ok)">FRAGMENT RESTORED</span>`;
+      await sleep(1500); resolve();
+    }
+  });
+}
+
+/* ---- Pit Stop Two · memory correlation (drag photo → archive slot, no-fail) ---- */
+function memoryMatch(host){
+  return new Promise(async resolve=>{
+    const imgs=[]; for(let i=1;i<=6;i++){ const url=ASSETS.images["memory_0"+i]; imgs.push({url,ok:await loadImage(url)}); }
+    host.innerHTML=`<div class="pit-sub">Match each recovered image to its archive log.</div>
+      <div class="match-wrap"><div class="tray" id="tray"></div><div class="slots" id="slots"></div></div>
+      <div class="pit-sub" id="mstat">0 / 6 synchronized</div>`;
+    const tray=host.querySelector("#tray"), slotsEl=host.querySelector("#slots"), slotEls=[];
+    for(let i=0;i<6;i++){ const s=document.createElement("div"); s.className="slot"; s.dataset.index=i;
+      s.innerHTML=`<div class="drop"><span class="ph">ARCHIVE 0${i+1}</span></div>
+        <div class="meta"><div class="atitle">ARCHIVE 0${i+1} // ${ARCHIVE_TITLES[i]}</div><div class="acap">${MEMORY_CAPTIONS[i]}</div></div>`;
+      slotsEl.appendChild(s); slotEls.push(s); }
+    const order=[0,1,2,3,4,5].sort(()=>Math.random()-0.5), cards=[];
+    order.forEach(idx=>{ const c=document.createElement("div"); c.className="pcard"; c.dataset.correct=idx;
+      if(imgs[idx].ok) c.style.backgroundImage=`url('${imgs[idx].url}')`; else c.innerHTML=`<span class="pn">ARCHIVE 0${idx+1}</span>`;
+      tray.appendChild(c); cards.push(c); makeDraggable(c); });
+    let done=0;
+    function slotAt(x,y){ return slotEls.find(s=>{ const r=s.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }); }
+    function highlight(x,y){ const s=slotAt(x,y); slotEls.forEach(el=>el.classList.toggle("over", el===s && !el.classList.contains("locked"))); }
+    function lock(card,slot){ slot.classList.add("locked"); const drop=slot.querySelector(".drop");
+      if(card.style.backgroundImage){ drop.innerHTML=""; drop.style.backgroundImage=card.style.backgroundImage; }
+      else drop.innerHTML=`<span class="ph" style="color:var(--ok)">SYNCED</span>`;
+      card.classList.add("placed"); card.style.visibility="hidden"; Audio_.beepHi();
+      done++; const m=host.querySelector("#mstat"); m.textContent=`${done} / 6 synchronized`;
+      if(done===6){ m.innerHTML=`<span style="color:var(--ok)">ARCHIVE SYNCHRONIZED</span>`; Audio_.confirm(); setTimeout(resolve,1500); } }
+    function makeDraggable(card){
+      let drag=false,sx=0,sy=0;
+      card.addEventListener("pointerdown",e=>{ if(card.classList.contains("placed"))return; drag=true; sx=e.clientX; sy=e.clientY;
+        card.classList.add("dragging"); try{card.setPointerCapture(e.pointerId);}catch(_){} });
+      card.addEventListener("pointermove",e=>{ if(!drag)return; card.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px) scale(1.04)`; highlight(e.clientX,e.clientY); });
+      card.addEventListener("pointerup",e=>{ if(!drag)return; drag=false; card.classList.remove("dragging");
+        const slot=slotAt(e.clientX,e.clientY); slotEls.forEach(s=>s.classList.remove("over"));
+        if(slot && !slot.classList.contains("locked") && +slot.dataset.index===+card.dataset.correct){ lock(card,slot); }
+        else { card.style.transition="transform .25s var(--ease)"; card.style.transform=""; setTimeout(()=>card.style.transition="",260); Audio_.data(); } });
+    }
+  });
+}
+
+/* ---- Archive recording playback (clean voice · explicit continue) ---- */
+function archivePlayback(container, opts){
+  return new Promise(async resolve=>{
+    const ok = opts.imgUrl ? await loadImage(opts.imgUrl) : false;
+    const audio = await loadArchiveAudio(ASSETS.audio[opts.key]);
+    const stripHtml = (opts.thumbs&&opts.thumbs.length)
+      ? `<div class="astrip">${opts.thumbs.map(u=>`<div style="background-image:url('${u}')"></div>`).join("")}</div>` : "";
+    container.innerHTML = `<div class="pit-wrap">
+      <div class="pit-eyebrow">${opts.title||'ARCHIVE RECOVERED'}</div>
+      ${opts.imgUrl!==null ? `<div class="archive-photo" id="aphoto" style="${ok?`background-image:url('${opts.imgUrl}')`:''}">${ok?'':'<div class="pit-sub" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">ARCHIVE IMAGE · AWAITING UPLOAD</div>'}</div>` : ''}
+      ${stripHtml}
+      ${opts.caption ? `<div class="archive-caption">${opts.caption}</div>` : ''}
+      <div class="wave" id="wave">${'<i></i>'.repeat(24)}</div>
+      <div id="actrl"></div></div>`;
+    const ctrl=container.querySelector("#actrl"), wave=container.querySelector("#wave");
+    const cont=()=>{ ctrl.innerHTML=`<button class="pit-btn" id="acont">Continue</button>`;
+      container.querySelector("#acont").onclick=()=>{ Audio_.click(); resolve(); }; };
+    const aphoto=container.querySelector("#aphoto");
+    if(audio){
+      ctrl.innerHTML=`<button class="pit-btn" id="aplay">Play Message</button>`;
+      container.querySelector("#aplay").onclick=()=>{ ctrl.innerHTML=""; wave.classList.add("live"); if(aphoto)aphoto.classList.add("zoom");
+        try{ audio.play(); }catch(e){}
+        audio.onended=()=>{ wave.classList.remove("live"); cont(); }; };
+    } else {
+      ctrl.innerHTML=`<div class="pit-sub">Archive recording · awaiting upload</div>`;
+      if(aphoto)aphoto.classList.add("zoom");
+      await sleep(opts.caption?4200:2600); cont();
+    }
+  });
+}
+
+/* ---- soften Mission Control after each recovery ---- */
+function softenMC(n){
+  if(n===1){ const a=$("#tArch"); if(a){a.textContent="RECOVERED";a.style.color="var(--ok)";} const m=$("#tMode"); if(m)m.textContent="ADAPTIVE"; }
+  if(n===2){ const s=$("#tSig"); if(s)s.textContent="PERSONAL"; }
+}
+
+/* ---- orchestrator invoked by the Driving Engine at each pit ---- */
+async function runPitStop(num){
+  const g=$("#garage");
+  g.innerHTML=`<div class="pit-wrap"><div class="pit-eyebrow">Pit Lane · Box ${num}</div>
+    <div class="pit-head">${num===1?'ARCHIVE FRAGMENT DETECTED':'MEMORY CORRELATION REQUIRED'}</div>
+    <div id="puzzleHost" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:16px"></div></div>`;
+  g.classList.add("on"); Audio_.beepHi();
+  await sleep(900);
+  const host=g.querySelector("#puzzleHost");
+  if(num===1){
+    await slidingPuzzle(host, ASSETS.images.puzzle_sliding);
+    await archivePlayback(g, { key:"archive_01", imgUrl:ASSETS.images.puzzle_sliding, caption:SLIDING_TEXT, title:"ARCHIVE 01 // RECOVERED" });
+    STATE.archives.rec01=true; softenMC(1);
+  } else {
+    await memoryMatch(host);
+    const thumbs=[]; for(let i=1;i<=6;i++){ const u=ASSETS.images["memory_0"+i]; if(await loadImage(u)) thumbs.push(u); }
+    await archivePlayback(g, { key:"archive_02", imgUrl:null, caption:null, title:"ARCHIVE RECORDING 02 // RECOVERED", thumbs });
+    STATE.archives.rec02=true; softenMC(2);
+  }
+  Save.write();
+  g.classList.remove("on"); await sleep(500); g.innerHTML="";
+}
 </script>
 </body>
 </html>
