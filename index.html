@@ -1408,7 +1408,7 @@ async function loveLetter(){
     // graceful in-universe fallback until love_letter.mp4 is uploaded
     finSet(`<div class="fin-eyebrow">Archive 003 // Personal</div>
       <div class="archive-photo" style="background:radial-gradient(circle at 50% 40%, #10193a, #05070f)"></div>
-      <div class="fin-serif" style="font-style:normal">Final archive · awaiting upload.<br><span style="font-size:.7em;color:var(--dim);font-family:var(--f-mono);letter-spacing:.06em">love_letter.mp4</span></div>
+      <div class="fin-serif" style="font-style:normal">Final archive · awaiting upload.<br><span style="font-size:.7em;color:var(--dim);font-family:var(--f-mono);letter-spacing:.06em">From my heart to yours</span></div>
       <button class="pit-btn" id="lfCont">Continue</button>`);
     await new Promise(res=>{ $("#lfCont").onclick=()=>{ Audio_.click(); res(); }; });
   }
