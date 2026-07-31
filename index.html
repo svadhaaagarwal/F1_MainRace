@@ -219,7 +219,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 .pit-head{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:clamp(15px,2vw,20px);color:var(--text)}
 .pit-sub{font-family:var(--f-mono);font-size:12px;letter-spacing:.05em;color:var(--dim);text-align:center;max-width:58ch;line-height:1.6}
 /* sliding puzzle */
-.slide-grid{position:relative;width:min(420px,74vw);aspect-ratio:1/1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3px;background:#05070f;border:1px solid var(--line-bright);padding:3px}
+.slide-grid{position:relative;height:min(46vh,430px);aspect-ratio:9/16;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3px;background:#05070f;border:1px solid var(--line-bright);padding:3px}
 .tile{position:relative;background-size:300% 300%;background-color:#0e1424;cursor:pointer;overflow:hidden;transition:box-shadow var(--t-xs)}
 .tile:hover{box-shadow:inset 0 0 0 2px var(--rb-blue)}
 .tile.blank{background:transparent!important;cursor:default;box-shadow:none}
@@ -231,7 +231,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 .scan.run{animation:scan 1.2s var(--ease) forwards}
 @keyframes scan{to{transform:translateY(330%)}}
 /* archive playback */
-.archive-photo{width:min(560px,82vw);aspect-ratio:16/10;background:#05070f center/cover no-repeat;border:1px solid var(--line-bright);position:relative;overflow:hidden}
+.archive-photo{height:min(40vh,380px);aspect-ratio:9/16;background:#05070f center/contain no-repeat;border:1px solid var(--line-bright);position:relative;overflow:hidden}
 .archive-photo.zoom{animation:slowzoom 20s linear forwards}
 @keyframes slowzoom{to{transform:scale(1.035)}}
 .archive-caption{font-family:var(--f-serif);font-size:clamp(18px,2.4vw,26px);line-height:1.5;color:#F4E9D8;max-width:44ch;text-align:center;font-style:italic}
@@ -244,24 +244,56 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 .pit-btn:hover{box-shadow:0 0 24px -6px var(--rb-blue)}
 .pit-btn:active{transform:translateY(2px)}
 /* matching */
-.match-wrap{display:grid;grid-template-columns:0.9fr 1.25fr;gap:24px;width:100%;max-width:900px;align-items:start}
+.match-wrap{display:flex;flex-direction:column;gap:14px;width:100%;max-width:940px;align-items:center}
 .tray{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:flex-start}
-.pcard{width:120px;height:84px;background:#0e1424 center/cover no-repeat;border:1px solid var(--line-bright);cursor:grab;position:relative;touch-action:none;transition:box-shadow var(--t-xs)}
+.pcard{width:clamp(58px,6vw,74px);aspect-ratio:9/16;background:#0e1424 center/cover no-repeat;border:1px solid var(--line-bright);cursor:grab;position:relative;touch-action:none;transition:box-shadow var(--t-xs)}
 .pcard .pn{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:rgba(238,242,248,.6)}
 .pcard.dragging{cursor:grabbing;z-index:80;box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 0 2px var(--rb-blue)}
 .pcard.placed{cursor:default}
-.slots{display:flex;flex-direction:column;gap:9px}
-.slot{display:flex;align-items:center;gap:12px;padding:8px;border:1px dashed var(--line-bright);background:rgba(8,10,24,.4);min-height:78px;transition:border-color var(--t-xs),background var(--t-xs)}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.slot{display:flex;align-items:center;gap:11px;padding:8px;border:1px dashed var(--line-bright);background:rgba(8,10,24,.4);transition:border-color var(--t-xs),background var(--t-xs)}
 .slot.over{border-color:var(--rb-blue);background:rgba(30,65,255,.09)}
 .slot.locked{border-style:solid;border-color:var(--ok);background:rgba(57,217,138,.05)}
-.slot .drop{width:106px;height:62px;flex:0 0 auto;background:#05070f center/cover no-repeat;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
-.slot .drop .ph{font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;color:var(--dim)}
+.slot .drop{width:clamp(52px,4.6vw,64px);aspect-ratio:9/16;flex:0 0 auto;background:#05070f center/cover no-repeat;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.slot .drop .ph{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.12em;color:var(--dim);text-align:center}
 .slot .meta{flex:1;text-align:left}
-.slot .atitle{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;color:var(--rb-blue-300);text-transform:uppercase}
-.slot .acap{font-family:var(--f-serif);font-style:italic;font-size:14.5px;line-height:1.4;color:#E7DCC9;margin-top:4px}
+.slot .atitle{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--rb-blue-300);text-transform:uppercase}
+.slot .acap{font-family:var(--f-serif);font-style:italic;font-size:13.5px;line-height:1.36;color:#E7DCC9;margin-top:4px}
 .slot.locked .atitle{color:var(--ok)}
 .astrip{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.astrip div{width:64px;height:42px;background:#0e1424 center/cover no-repeat;border:1px solid var(--line)}
+.astrip div{width:38px;aspect-ratio:9/16;background:#0e1424 center/cover no-repeat;border:1px solid var(--line)}
+
+/* ===== PHASE 4 · FINALE ===== */
+#finaleBg{position:absolute;inset:0;z-index:49;opacity:0;transition:opacity 1.6s var(--ease);pointer-events:none}
+#finaleBg.black{background:#000;opacity:1}
+#finaleBg.warm{background:radial-gradient(120% 100% at 50% 46%, #3a2a1c 0%, #180f06 56%, #05040a 100%);opacity:1}
+#finaleBg.gold{background:radial-gradient(120% 100% at 50% 42%, #7a5222 0%, #2c1d0b 54%, #070509 100%);opacity:1}
+#finale{position:absolute;inset:0;z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:6vh 6vw;pointer-events:auto}
+#finale.on{display:flex}
+#finale .screen{gap:clamp(12px,2.2vh,22px)}
+.fin-eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.4em;color:var(--dim);text-transform:uppercase}
+.podium-cat{display:flex;flex-direction:column;gap:11px;width:100%;max-width:460px;margin:0 auto}
+.pcat{display:flex;flex-direction:column;gap:5px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.pcat.in{opacity:1;transform:none}
+.pcat .row{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.pcat .row .q{color:var(--ok)}
+.pbar{height:4px;background:#1a2233;overflow:hidden}
+.pbar>i{display:block;height:100%;width:0;background:var(--rb-blue);transition:width .8s var(--ease)}
+.result-big{font-family:var(--f-display);font-weight:900;letter-spacing:.12em;font-size:clamp(34px,7vw,80px);color:var(--rb-yellow);text-shadow:0 0 50px rgba(255,199,0,.32);line-height:1}
+.fin-line{font-family:var(--f-mono);font-size:clamp(13px,1.5vw,16px);color:var(--text);letter-spacing:.04em;line-height:1.7;max-width:54ch}
+.reveal-name{font-family:var(--f-serif);font-weight:500;font-size:clamp(40px,9vw,96px);color:#F6E9D0;line-height:1;letter-spacing:.02em}
+.reveal-was{font-family:var(--f-mono);font-size:12px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+.reveal-heart{font-family:var(--f-serif);font-size:clamp(28px,5vw,52px);color:#F6E9D0}
+.reveal-heart .h{color:var(--rb-red)}
+.fin-serif{font-family:var(--f-serif);font-style:italic;font-size:clamp(20px,3vw,32px);color:#F4E9D8;line-height:1.5;max-width:42ch}
+.love-open{font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;padding:15px 44px;color:var(--text);border:1px solid var(--rb-yellow);background:rgba(255,199,0,.06);transition:box-shadow var(--t-m);pointer-events:auto}
+.love-open:hover{box-shadow:0 0 30px -6px var(--rb-yellow)}
+#loveVideo{max-width:min(92vw,760px);max-height:84vh;background:#000;border:1px solid rgba(255,255,255,.08)}
+.shutdown-title{font-family:var(--f-display);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:clamp(20px,3vw,34px)}
+.status-line{font-family:var(--f-mono);font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.status-line .run{color:var(--rb-red)}
+#epi{position:absolute;inset:0;z-index:80;display:none;cursor:pointer;background:#000}
+#epiText{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);font-family:var(--f-serif);font-style:italic;font-size:24px;color:rgba(246,233,208,0);transition:color 1.2s var(--ease)}
 
 /* AUTHORISE GATE */
 #gate{position:absolute;inset:0;z-index:60;background:var(--rb-navy-950);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:26px;pointer-events:auto;transition:opacity var(--t-l) var(--ease)}
@@ -358,6 +390,9 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 
   <div id="garage"></div>
   <div id="stage"></div>
+  <div id="finaleBg"></div>
+  <div id="finale"></div>
+  <div id="epi"><div id="epiText">Good luck.</div></div>
 
   <div id="gate">
     <div class="mark">Mission Control</div>
@@ -366,7 +401,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
     <button class="btn" id="authBtn">Authorise Connection</button>
     <div class="status" id="gateStatus">Status &nbsp;·&nbsp; Standby</div>
   </div>
-  <div id="build">Project Driver 01 · Sunday · Build P2</div>
+  <div id="build">Project Driver 01 · Sunday · Build P4</div>
 </div>
 
 <script>
@@ -449,12 +484,13 @@ const Audio_=(()=>{
     s.connect(bp);bp.connect(g);g.connect(ambientGain);s.start();
     const t=ctx.currentTime;ambientGain.gain.cancelScheduledValues(t);ambientGain.gain.setValueAtTime(0,t);ambientGain.gain.linearRampToValueAtTime(.9,t+2); }
   function startEngine(){ if(!ctx||engine)return;const t=ctx.currentTime;
-    const out=ctx.createGain();out.gain.value=0;out.connect(master);
+    const engineBus=ctx.createGain();engineBus.gain.value=1;engineBus.connect(master);
+    const out=ctx.createGain();out.gain.value=0;out.connect(engineBus);
     const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.value=420;lp.connect(out);const oscs=[];
     [0.5,1,2].forEach((m,i)=>{const o=ctx.createOscillator();o.type=i===2?"square":"sawtooth";o.frequency.value=46*m;const g=ctx.createGain();g.gain.value=i===0?.5:(i===1?.32:.12);o.connect(g);g.connect(lp);o.start();oscs.push(o);});
     const ns=ctx.createBufferSource();ns.buffer=noiseBuf;ns.loop=true;const nbp=ctx.createBiquadFilter();nbp.type="bandpass";nbp.frequency.value=140;nbp.Q.value=1.1;const ng=ctx.createGain();ng.gain.value=.05;ns.connect(nbp);nbp.connect(ng);ng.connect(lp);ns.start();
     const lfo=ctx.createOscillator();lfo.type="sine";lfo.frequency.value=11;const lg=ctx.createGain();lg.gain.value=60;lfo.connect(lg);lg.connect(lp.frequency);lfo.start();
-    out.gain.linearRampToValueAtTime(.16,t+.5);engine={out,lp,oscs,base:46}; }
+    out.gain.linearRampToValueAtTime(.16,t+.5);engine={out,lp,oscs,base:46,bus:engineBus}; }
   function setRPM(v){ STATE.rpm=v; if(!ctx||!engine)return;const t=ctx.currentTime;const f=engine.base*(1+v*7.5);
     engine.oscs.forEach((o,i)=>o.frequency.setTargetAtTime(f*[0.5,1,2][i],t,.05));
     engine.lp.frequency.setTargetAtTime(420+v*2600,t,.05); engine.out.gain.setTargetAtTime(.16+v*.14,t,.06); }
@@ -462,6 +498,16 @@ const Audio_=(()=>{
     const g=ctx.createGain();g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.12,t+.1);g.gain.linearRampToValueAtTime(.02,t+.75);
     const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=180;o.connect(bp);bp.connect(g);g.connect(master);o.start(t);o.stop(t+.8); }
   function rev(){ if(!engine)return;setRPM(.7);setTimeout(()=>setRPM(.12),380); }
+  function engineDuck(level){ level=(level==null?0.18:level); if(!ctx||!engine)return;const t=ctx.currentTime;
+    engine.bus.gain.cancelScheduledValues(t);engine.bus.gain.setValueAtTime(engine.bus.gain.value,t);engine.bus.gain.linearRampToValueAtTime(level,t+.35); }
+  function engineRestore(){ if(!ctx||!engine)return;const t=ctx.currentTime;
+    engine.bus.gain.cancelScheduledValues(t);engine.bus.gain.setValueAtTime(engine.bus.gain.value,t);engine.bus.gain.linearRampToValueAtTime(1,t+.45); }
+  function shutdownTone(){ if(!ctx)return;const t=ctx.currentTime;
+    const o=ctx.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(30,t+1.6);
+    const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(1200,t);lp.frequency.exponentialRampToValueAtTime(120,t+1.6);
+    const g=ctx.createGain();g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.0001,t+1.85);
+    o.connect(lp);lp.connect(g);g.connect(master);o.start(t);o.stop(t+1.9);
+    if(engine){ engine.bus.gain.cancelScheduledValues(t); engine.bus.gain.setValueAtTime(engine.bus.gain.value,t); engine.bus.gain.linearRampToValueAtTime(0,t+1.4); } }
   async function loadMusic(key,url){ if(!ctx||buffers[key])return !!buffers[key];
     try{const r=await fetch(url);if(!r.ok)return false;const ab=await r.arrayBuffer();buffers[key]=await ctx.decodeAudioData(ab);return true;}catch(e){return false;} }
   const hasMusic=k=>!!buffers[k];
@@ -471,7 +517,7 @@ const Audio_=(()=>{
     musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(vol,t+fade);s.start();musicSrc=s;return true; }
   function stopMusic(fade=2){ if(!ctx||!musicSrc)return;const t=ctx.currentTime,s=musicSrc;musicSrc=null;
     musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(0,t+fade);try{s.stop(t+fade+.1);}catch(e){} }
-  return {init,resume,startAmbient,startEngine,setRPM,starter,rev,beep,beepHi,confirm,click,data,lightTone,warn,loadMusic,hasMusic,playMusic,stopMusic};
+  return {init,resume,startAmbient,startEngine,setRPM,starter,rev,engineDuck,engineRestore,shutdownTone,beep,beepHi,confirm,click,data,lightTone,warn,loadMusic,hasMusic,playMusic,stopMusic};
 })();
 
 /* ============================================================ HUD */
@@ -702,9 +748,12 @@ const Drive=(()=>{
 
   function pitSequence(num){
     running=false; STATE.playerControl=false; throttle=false;
-    Audio_.setRPM(0.1); HUD.setSpeed(0); speed=0;
+    Audio_.setRPM(0.1); Audio_.engineDuck(0.18); Audio_.stopMusic(1.4);   // quiet garage · voice/music never fought
+    HUD.setSpeed(0); speed=0;
     (async()=>{
       await runPitStop(num);                 // Phase 3 · puzzle + archive recording
+      Audio_.engineRestore();
+      if(Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:.4,fade:3});
       running=true; STATE.playerControl=true; last=performance.now();
       MC("Back on track. Continue.");
     })();
@@ -712,8 +761,9 @@ const Drive=(()=>{
 
   async function finish(){
     running=false; STATE.playerControl=false; throttle=false;
-    Audio_.stopMusic(2.5);
     HUD.drs(false); HUD.corner(null);
+    if(Audio_.hasMusic("music_final")){ if(!STATE._finalMusic){ STATE._finalMusic=true; Audio_.playMusic("music_final",{vol:.4,fade:3}); } }
+    else Audio_.stopMusic(2.5);
     // settle
     const settle=setInterval(()=>{ speed*=0.86; HUD.setSpeed(displayKmh());
       Audio_.setRPM(clamp(speed,0.08,1)); if(speed<0.02){clearInterval(settle);speed=0;HUD.setSpeed(0);Audio_.setRPM(0.08);} },60);
@@ -751,7 +801,8 @@ const Drive=(()=>{
       if(pos>=trackLen) pos=trackLen-1;
       // rival advance + overtake
       if(rival&&rival.active){ rival.z += 0.62*12000*dt;
-        if(pos > rival.z-1.5*SEGLEN){ rival.active=false; HUD.notify("POSITION GAINED"); Audio_.beepHi(); } }
+        if(pos > rival.z-1.5*SEGLEN){ rival.active=false; HUD.notify("POSITION GAINED"); Audio_.beepHi();
+          if(!STATE._finalMusic && Audio_.hasMusic("music_final")){ STATE._finalMusic=true; Audio_.playMusic("music_final",{vol:.42,fade:3}); } } }
       updateGears(); updateCorner(); checkMilestones();
       HUD.setSpeed(displayKmh());
     }
@@ -772,6 +823,7 @@ const Drive=(()=>{
     startLoop(){ if(rafId)return; last=performance.now(); rafId=requestAnimationFrame(frame); },
     enableFormation(){ running=true; STATE.playerControl=true; phaseCap=0.2; steerMul=0.4; STATE.sector="FORMATION"; HUD.sector("FORMATION"); },
     setFinishHandler(fn){ onFinish=fn; },
+    halt(){ if(rafId){ cancelAnimationFrame(rafId); rafId=null; } },
     // expose for coaching
     get pos(){return pos;}, get speed(){return speed;},
     forceThrottleHint(){ return throttle; }, get keyL(){return keyL;}, get keyR(){return keyR;}
@@ -894,25 +946,24 @@ function waitFor(cond, timeout){ return new Promise(res=>{
 }); }
 
 async function onFinishReached(){
-  // Phase-2 boundary: podium / identity reveal / love letter arrive in Phase 4.
   await clearStage();
-  mount(`<div class="eyebrow">Simulation</div>
-         <div class="title">Finish Line</div>
-         <div class="mono" style="font-size:12px;color:var(--dim)">Lap complete · Podium & reveal online in Phase 04</div>`);
-  HUD.banner("Mission Status");
-  STATE.phase="FINISH_LINE"; Save.write();
+  runFinale();                         // Phase 4 · podium → reveal → love letter → shutdown
 }
 
 /* ============================================================ GATE → BOOT */
 $("#authBtn").addEventListener("click", async ()=>{
   $("#gateStatus").textContent="Status · Connecting";
   Audio_.init(); Audio_.resume(); Audio_.confirm();
+  // preload every music slot (no-op until the files exist)
   Audio_.loadMusic("music_formation",ASSETS.audio.music_formation);
   Audio_.loadMusic("music_drs",ASSETS.audio.music_drs);
+  Audio_.loadMusic("music_final",ASSETS.audio.music_final);
   try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}   // ensure Orbitron loaded (fixes glyph box)
   $("#gate").classList.add("hide"); await sleep(760); $("#gate").style.display="none";
   runBoot();
 });
+/* safety net: some browsers keep the AudioContext suspended until a gesture — resume on any interaction */
+["pointerdown","keydown","touchstart"].forEach(ev=>window.addEventListener(ev,()=>Audio_.resume(),{passive:true}));
 window.addEventListener("keydown",(e)=>{ if(e.code==="Enter" && !$("#gate").classList.contains("hide")) $("#authBtn").click(); });
 </script>
 
@@ -950,10 +1001,13 @@ function slidingPuzzle(host, url){
     const ok = await loadImage(url);
     host.innerHTML = `<div class="pit-sub">Reassemble the recovered fragment.</div>
       <div class="slide-grid preview" id="grid"></div>
+      <div style="display:flex;align-items:center;gap:16px" id="hintRow">
+        <button class="pit-btn" id="hintBtn" style="padding:9px 22px">Hint (3)</button>
+      </div>
       <div class="pit-sub" id="sstat" style="min-height:1.2em"></div>`;
     const grid = host.querySelector("#grid");
     const tiles=[]; for(let i=0;i<9;i++){ const t=document.createElement("div"); t.className="tile"; grid.appendChild(t); tiles.push(t); }
-    let pieces=[0,1,2,3,4,5,6,7,8], blank=8;
+    let pieces=[0,1,2,3,4,5,6,7,8], blank=8, hintsLeft=3;
     function bg(v){ const r=Math.floor(v/3), c=v%3;
       if(ok) return `background-image:url('${url}');background-position:${c*50}% ${r*50}%;`;
       const hue=208+v*7; return `background:linear-gradient(135deg,hsl(${hue} 42% 22%),hsl(${hue} 52% 12%));`; }
@@ -965,12 +1019,42 @@ function slidingPuzzle(host, url){
         if(v===8 && !isSolved){ t.className="tile blank"; t.setAttribute("style",""); t.innerHTML=""; }
         else { t.className="tile"; t.setAttribute("style",bg(v)); t.innerHTML = ok?"":`<span class="tn">${v+1}</span>`; } }
     }
+    /* A* (Manhattan) — returns the cell the blank should swap with for one optimal move */
+    function nextHintMove(state){
+      const goal="012345678", start=state.join(""); if(start===goal) return -1;
+      const h=s=>{let d=0;for(let i=0;i<9;i++){const v=+s[i];if(v===8)continue;d+=Math.abs(((i/3)|0)-((v/3)|0))+Math.abs(i%3-v%3);}return d;};
+      const nb=i=>{const r=(i/3)|0,c=i%3,a=[];if(r>0)a.push(i-3);if(r<2)a.push(i+3);if(c>0)a.push(i-1);if(c<2)a.push(i+1);return a;};
+      const open=[{s:start,g:0,f:h(start),first:null}], seen=new Map([[start,0]]); let guard=0;
+      while(open.length && guard++<200000){
+        let mi=0; for(let i=1;i<open.length;i++) if(open[i].f<open[mi].f) mi=i;
+        const cur=open.splice(mi,1)[0];
+        if(cur.s===goal) return cur.first;
+        const bi=cur.s.indexOf("8");
+        for(const n of nb(bi)){ const arr=cur.s.split(""); const tmp=arr[bi];arr[bi]=arr[n];arr[n]=tmp; const ns=arr.join(""), ng=cur.g+1;
+          if(seen.has(ns)&&seen.get(ns)<=ng) continue; seen.set(ns,ng);
+          open.push({s:ns,g:ng,f:ng+h(ns),first: cur.first===null? n : cur.first}); }
+      }
+      return -1;
+    }
+    function updateHint(){ const b=host.querySelector("#hintBtn"); if(!b)return;
+      b.textContent=`Hint (${hintsLeft})`; if(hintsLeft<=0){b.disabled=true;b.style.opacity=".4";b.style.cursor="not-allowed";} }
+    function doHint(){
+      if(hintsLeft<=0||grid.classList.contains("preview")||grid.classList.contains("solved"))return;
+      const move=nextHintMove(pieces); if(move<0)return;
+      const from=blank;
+      const tmp=pieces[blank];pieces[blank]=pieces[move];pieces[move]=tmp; blank=move;
+      Audio_.beepHi(); render();
+      tiles[from].style.boxShadow="inset 0 0 0 2px var(--rb-yellow)"; setTimeout(()=>{ if(tiles[from]) tiles[from].style.boxShadow=""; },550);
+      hintsLeft--; updateHint();
+      if(solved()) onSolved();
+    }
     render();
     await sleep(1600);                                   // blurred/whole preview
     grid.classList.remove("preview");
-    let b=8; for(let k=0;k<80;k++){ const ns=neighbors(b); const nb=ns[Math.floor(Math.random()*ns.length)];
-      [pieces[b],pieces[nb]]=[pieces[nb],pieces[b]]; b=nb; }
+    let b=8; for(let k=0;k<80;k++){ const ns=neighbors(b); const nbr=ns[Math.floor(Math.random()*ns.length)];
+      [pieces[b],pieces[nbr]]=[pieces[nbr],pieces[b]]; b=nbr; }
     blank=pieces.indexOf(8); render();
+    host.querySelector("#hintBtn").addEventListener("click", doHint);
     tiles.forEach((t,cell)=> t.addEventListener("click",()=>{
       if(grid.classList.contains("preview")||grid.classList.contains("solved"))return;
       if(neighbors(blank).includes(cell)){ [pieces[blank],pieces[cell]]=[pieces[cell],pieces[blank]]; blank=cell; Audio_.click(); render();
@@ -978,6 +1062,7 @@ function slidingPuzzle(host, url){
     }));
     async function onSolved(){
       grid.classList.add("solved"); render(); Audio_.confirm();
+      const hr=host.querySelector("#hintRow"); if(hr) hr.style.display="none";
       const scan=document.createElement("div"); scan.className="scan run"; grid.appendChild(scan);
       host.querySelector("#sstat").innerHTML=`<span style="color:var(--ok)">FRAGMENT RESTORED</span>`;
       await sleep(1500); resolve();
@@ -1081,6 +1166,202 @@ async function runPitStop(num){
   }
   Save.write();
   g.classList.remove("on"); await sleep(500); g.innerHTML="";
+}
+</script>
+
+<script>
+"use strict";
+/* ============================================================
+   PHASE 4 — NARRATIVE SYSTEMS · the finale
+   Simulation Collapse → Podium → Identity Reveal → The Quiet →
+   Love Letter (video placeholder) → Shutdown → Epilogue
+   ============================================================ */
+
+function finSet(html){
+  const f=$("#finale"); f.classList.add("on");
+  f.innerHTML=`<div class="screen fade-in" style="pointer-events:auto;max-width:900px">${html}</div>`;
+  return f.querySelector(".screen");
+}
+
+async function runFinale(){
+  try{
+    await simulationCollapse();
+    await podium();
+    await identityReveal();
+    await theQuiet();
+    await loveLetter();
+    await shutdown();
+  }catch(e){ /* fail silently, in-universe */ }
+}
+
+/* ---- Phase I · Simulation Collapse ---- */
+async function simulationCollapse(){
+  STATE.phase="COLLAPSE";
+  const mods=["#telemetry","#miniCircuit","#cluster","#corner","#mcBanner","#radio"];
+  for(const m of mods){ const el=$(m); if(el){ el.style.transition="opacity .4s"; el.style.opacity="0"; } Audio_.data(); await sleep(240); }
+  Audio_.engineDuck(0); Audio_.stopMusic(1.6);
+  ["#road","#cockpit","#atmos","#blur","#haze","#track","#hills","#sky"].forEach(s=>{ const el=$(s); if(el){ el.style.transition="opacity 1.2s"; el.style.opacity="0"; } });
+  await sleep(1300);
+  if(window.Drive && Drive.halt) Drive.halt();
+  $("#hud").classList.remove("on");
+  $("#finaleBg").className="black";
+  $("#finale").classList.add("on");
+  await sleep(1700);                         // silence beat
+}
+
+/* ---- Phase J · Podium ---- */
+async function podium(){
+  STATE.phase="PODIUM";
+  $("#finaleBg").className="warm";
+  if(Audio_.hasMusic("music_final")) Audio_.playMusic("music_final",{vol:.32,fade:4});
+  finSet(`<div class="fin-eyebrow">Driver Evaluation · Final Report</div><div class="podium-cat" id="pc"></div>`);
+  const pc=$("#pc"), cats=["Resolve","Patience","Trust","Instinct","Consistency","Heart"];
+  for(const name of cats){
+    const d=document.createElement("div"); d.className="pcat";
+    d.innerHTML=`<div class="row"><span>${name}</span><span class="q">QUALIFIED</span></div><div class="pbar"><i></i></div>`;
+    pc.appendChild(d); requestAnimationFrame(()=>d.classList.add("in")); Audio_.beepHi();
+    await sleep(120); d.querySelector("i").style.width=(86+Math.random()*11)+"%"; await sleep(430);
+  }
+  await sleep(1000);
+  finSet(`<div class="fin-eyebrow">Result</div><div class="result-big">QUALIFIED</div>`); Audio_.confirm();
+  await sleep(2100);
+  let s=finSet(`<div class="fin-line" id="fl"></div>`);
+  await type($("#fl",s),"You were never competing against anyone.",26); await sleep(1200);
+  s=finSet(`<div class="fin-line" id="fl"></div>`);
+  await type($("#fl",s),"This programme was never built to find the fastest driver — only the right one.",26); await sleep(1800);
+  finSet(`<div class="result-big" style="font-size:clamp(26px,5vw,56px);color:var(--ok)">ACCESS GRANTED</div>`); Audio_.confirm(); await sleep(1700);
+  finSet(`<div class="result-big" style="font-size:clamp(24px,4.6vw,52px)">THE REAL MISSION BEGINS</div>
+          <div class="fin-line" style="margin-top:18px;color:var(--dim)">Three sectors completed. Third year begins.</div>`);
+  await sleep(2800);
+}
+
+/* ---- Phase K · Identity Reveal (the climax) ---- */
+async function identityReveal(){
+  STATE.phase="IDENTITY_REVEAL";
+  $("#finaleBg").className="gold";
+  HUD.radio && null;
+  // Coordinator → Svadhaa
+  let s=finSet(`<div class="reveal-was" id="w1">Coordinator</div><div class="reveal-name" id="n1" style="opacity:0"></div>`);
+  await sleep(900);
+  $("#w1",s).style.transition="opacity 1s"; $("#w1",s).style.opacity="0"; await sleep(750); Audio_.confirm();
+  const n1=$("#n1",s); n1.textContent="Svadhaa"; n1.style.transition="opacity 1.3s"; requestAnimationFrame(()=>n1.style.opacity="1");
+  await sleep(2200);
+  // Driver 01 → Sahil
+  s=finSet(`<div class="reveal-was" id="w2">Driver 01</div><div class="reveal-name" id="n2" style="min-height:1em"></div>`);
+  await sleep(900);
+  const w2=$("#w2",s); w2.style.transition="opacity .12s";
+  for(let i=0;i<7;i++){ w2.style.opacity=(i%2?"1":"0.2"); Audio_.data(); await sleep(120); }
+  w2.style.transition="opacity .8s"; w2.style.opacity="0"; await sleep(700);
+  const n2=$("#n2",s), name="Sahil";
+  for(let i=0;i<name.length;i++){ n2.textContent=name.slice(0,i+1); Audio_.beepHi(); await sleep(340); }
+  await sleep(1600);
+  finSet(`<div class="reveal-heart">Svadhaa <span class="h">&#9829;</span> Sahil</div>`); Audio_.confirm(); await sleep(2400);
+  // Mission Control's last words
+  s=finSet(`<div class="fin-line" id="fl"></div>`);
+  await type($("#fl",s),"Identity confirmed.",34); await sleep(1300);
+  s=finSet(`<div class="fin-serif" id="fl2"></div>`);
+  await type($("#fl2",s),"Welcome home.",60); await sleep(2400);
+}
+
+/* ---- Phase L · The Quiet ---- */
+async function theQuiet(){
+  STATE.phase="THE_QUIET";
+  finSet(`<div class="reveal-heart" style="opacity:.92">Svadhaa <span class="h">&#9829;</span> Sahil</div>`);
+  await sleep(3400);                          // breathe · no prompt
+  let s=finSet(`<div class="brief" style="max-width:520px;border-left-color:var(--rb-blue)"><p id="q1"></p><p id="q2"></p><p id="q3"></p></div>`);
+  await type($("#q1",s),"MISSION STATUS · COMPLETE",24); await sleep(400);
+  await type($("#q2",s),"Final report archived.",24); await sleep(400);
+  await type($("#q3",s),"Opening final archive…",24); await sleep(1500);
+}
+
+/* ---- Phase M · Love Letter (video placeholder + connection) ---- */
+async function loveLetter(){
+  STATE.phase="LOVE_LETTER";
+  $("#finaleBg").className="black";
+  finSet(`<div class="fin-eyebrow">Archive 003 // Personal</div>
+          <div class="reveal-name" style="font-size:clamp(22px,3vw,34px)">Unlocked</div>
+          <button class="love-open" id="openLetter">Open</button>`);
+  await new Promise(res=>{ $("#openLetter").onclick=()=>{ Audio_.click(); res(); }; });
+
+  // duck the Surili bed under the letter (video carries its own voice)
+  if(Audio_.hasMusic("music_final")) Audio_.playMusic("music_final",{vol:.12,fade:1.5});
+
+  const url = ASSETS.video.love_letter;
+  const v = document.createElement("video");
+  v.id="loveVideo"; v.setAttribute("playsinline",""); v.controls=false; v.preload="auto"; v.src=url;
+  const ok = await new Promise(res=>{ let done=false;
+    const d=()=>{ if(!done){done=true;res(true);} }; const n=()=>{ if(!done){done=true;res(false);} };
+    v.addEventListener("canplay",d); v.addEventListener("error",n);
+    setTimeout(()=>{ if(!done){done=true;res(v.readyState>=2);} },4500); });
+
+  if(ok){
+    const f=$("#finale"); f.classList.add("on"); f.innerHTML=""; f.appendChild(v);
+    try{ await v.play(); }catch(e){}
+    await new Promise(res=>{ v.onended=res; v.addEventListener("error",res); });
+  } else {
+    // graceful in-universe fallback until love_letter.mp4 is uploaded
+    finSet(`<div class="fin-eyebrow">Archive 003 // Personal</div>
+      <div class="archive-photo" style="background:radial-gradient(circle at 50% 40%, #2a1e10, #05040a)"></div>
+      <div class="fin-serif" style="font-style:normal">Final archive · awaiting upload.<br><span style="font-size:.7em;color:var(--dim);font-family:var(--f-mono);letter-spacing:.06em">love_letter.mp4</span></div>
+      <button class="pit-btn" id="lfCont">Continue</button>`);
+    await new Promise(res=>{ $("#lfCont").onclick=()=>{ Audio_.click(); res(); }; });
+  }
+  await sleep(900);
+}
+
+/* ---- Phase N · Shutdown ---- */
+async function shutdown(){
+  STATE.phase="SHUTDOWN";
+  $("#finaleBg").className="black";
+  if(Audio_.hasMusic("music_final")) Audio_.playMusic("music_final",{vol:.28,fade:2});   // bring the bed back up gently
+
+  let s=finSet(`<div class="shutdown-title" id="ty">Thank you, Driver 01.</div>`);
+  await sleep(2300);
+  $("#ty",s).style.transition="opacity 1s"; $("#ty",s).style.opacity="0"; await sleep(1000);
+  finSet(`<div class="shutdown-title" style="color:#F6E9D0">Thank you, Sahil.</div>`); Audio_.confirm(); await sleep(2600);
+
+  Audio_.confirm();                                    // Friday-style boot callback
+  s=finSet(`<div class="mono" id="s1" style="font-size:13px"></div><div class="mono" id="s2" style="font-size:13px"></div>
+            <div class="mono" id="s3" style="font-size:13px"></div><div class="mono" id="s4" style="font-size:13px"></div>`);
+  await type($("#s1",s),"No further evaluations scheduled.",24); await sleep(280);
+  await type($("#s2",s),"Driver Evaluation Programme permanently concluded.",24); await sleep(280);
+  await type($("#s3",s),"Mission transferred.",24); await sleep(280);
+  await type($("#s4",s),"Destination unknown. Co-driver confirmed.",24); await sleep(1700);
+
+  s=finSet(`<div class="fin-eyebrow">Project Driver 01 · Status</div><div class="result-big" id="st" style="font-size:clamp(30px,6vw,66px);color:var(--dim)">ARCHIVED</div>`);
+  await sleep(1900);
+  const st=$("#st",s); st.style.transition="opacity .8s"; st.style.opacity="0"; await sleep(800);
+  st.textContent="LIVING"; st.style.color="var(--ok)"; st.style.opacity="0"; requestAnimationFrame(()=>st.style.opacity="1"); Audio_.confirm();
+  await sleep(2700);
+
+  finSet(`<div class="fin-serif" style="font-style:normal">The evaluation has ended.<br>The journey has not.</div>
+          <div class="reveal-name" style="font-size:clamp(24px,3.4vw,42px);margin-top:16px">Happy Third Anniversary</div>`);
+  await sleep(3400);
+
+  s=finSet(`<div class="status-line" id="eng">ENGINE STATUS · OFF</div>
+            <div class="status-line" id="heart" style="opacity:0;margin-top:16px">HEART STATUS · <span class="run">RUNNING</span></div>`);
+  Audio_.shutdownTone();
+  await sleep(1700);
+  $("#heart",s).style.transition="opacity 1s"; $("#heart",s).style.opacity="1"; Audio_.beepHi();
+  await sleep(3200);
+
+  Audio_.stopMusic(4);
+  const f=$("#finale"); f.style.transition="opacity 3s"; f.style.opacity="0";
+  await sleep(3400);
+  f.classList.remove("on"); f.style.opacity=""; f.innerHTML="";
+  $("#finaleBg").className="black";
+  enableEpilogue();
+}
+
+/* ---- Epilogue · the hidden line ---- */
+function enableEpilogue(){
+  const epi=$("#epi"); epi.style.display="block";
+  epi.addEventListener("click",()=>{
+    Audio_.beep();
+    const t=$("#epiText");
+    t.style.color="rgba(246,233,208,.85)";
+    setTimeout(()=>{ t.style.color="rgba(246,233,208,0)"; },2800);
+  });
 }
 </script>
 </body>
