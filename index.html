@@ -128,7 +128,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 #telemetry .k{font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:left}
 #telemetry .v{font-family:var(--f-mono);font-size:11px;color:var(--text)}
 
-#miniCircuit{position:absolute;right:clamp(16px,3vw,38px);top:clamp(132px,21vh,182px);
+#miniCircuit{display:none;position:absolute;right:clamp(16px,3vw,38px);top:clamp(132px,21vh,182px);
   width:128px;height:128px;padding:8px;background:rgba(8,10,24,.52);border:1px solid var(--line)}
 #miniCircuit svg{width:100%;height:100%}
 #miniCircuit .cap{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
@@ -1089,6 +1089,7 @@ function slidingPuzzle(host, url){
       <div class="slide-grid preview" id="grid"></div>
       <div style="display:flex;align-items:center;gap:16px" id="hintRow">
         <button class="pit-btn" id="hintBtn" style="padding:9px 22px">Hint (3)</button>
+        <button class="pit-btn" id="forfeitBtn" style="padding:9px 22px">I Forfeit</button>
       </div>
       <div class="pit-sub" id="sstat" style="min-height:1.2em"></div>`;
     const grid = host.querySelector("#grid");
@@ -1141,6 +1142,7 @@ function slidingPuzzle(host, url){
       [pieces[b],pieces[nbr]]=[pieces[nbr],pieces[b]]; b=nbr; }
     blank=pieces.indexOf(8); render();
     host.querySelector("#hintBtn").addEventListener("click", doHint);
+    host.querySelector("#forfeitBtn").addEventListener("click",()=>{ if(grid.classList.contains("solved"))return; pieces=[0,1,2,3,4,5,6,7,8]; blank=8; render(); onSolved(); });
     tiles.forEach((t,cell)=> t.addEventListener("click",()=>{
       if(grid.classList.contains("preview")||grid.classList.contains("solved"))return;
       if(neighbors(blank).includes(cell)){ [pieces[blank],pieces[cell]]=[pieces[cell],pieces[blank]]; blank=cell; Audio_.click(); render();
