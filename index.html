@@ -1067,10 +1067,13 @@ async function onFinishReached(){
 $("#authBtn").addEventListener("click", async ()=>{
   $("#gateStatus").textContent="Status · Connecting";
   Audio_.init(); Audio_.resume(); Audio_.confirm();
-  // preload every music slot (no-op until the files exist)
-  Audio_.loadMusic("music_formation",ASSETS.audio.music_formation);
-  Audio_.loadMusic("music_drs",ASSETS.audio.music_drs);
-  Audio_.loadMusic("music_final",ASSETS.audio.music_final);
+  // preload every music slot and wait for decoding to finish before boot
+  const audioLoads = await Promise.all([
+    Audio_.loadMusic("music_formation", ASSETS.audio.music_formation),
+    Audio_.loadMusic("music_drs", ASSETS.audio.music_drs),
+    Audio_.loadMusic("music_final", ASSETS.audio.music_final)
+  ]);
+  if(!audioLoads.every(Boolean)) console.warn("Audio preload incomplete:", audioLoads);
   try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}   // ensure Orbitron loaded (fixes glyph box)
   $("#gate").classList.add("hide"); await sleep(760); $("#gate").style.display="none";
   runBoot();
