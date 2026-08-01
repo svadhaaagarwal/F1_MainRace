@@ -310,6 +310,9 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:n
 .love-open{font-family:var(--f-mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;padding:15px 44px;color:var(--text);border:1px solid var(--rb-blue);background:linear-gradient(180deg,rgba(30,65,255,.16),rgba(10,16,36,.6));transition:box-shadow var(--t-m);pointer-events:auto}
 .love-open:hover{box-shadow:0 0 30px -6px var(--rb-blue)}
 #loveVideo{max-width:min(92vw,760px);max-height:84vh;background:#000;border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 90px -30px rgba(0,0,0,.9)}
+.video-wrap{position:relative;display:inline-block;max-width:min(92vw,760px);max-height:84vh}
+.video-skip{position:absolute;right:16px;bottom:16px;z-index:6;padding:10px 16px;border:1px solid var(--rb-blue);background:rgba(10,16,36,.82);font-family:var(--f-mono);font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--text);pointer-events:auto}
+.video-skip:hover{box-shadow:0 0 22px -6px var(--rb-blue)}
 .shutdown-title{font-family:var(--f-display);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:clamp(20px,3vw,34px)}
 .status-line{font-family:var(--f-mono);font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
 .status-line .run{color:var(--rb-red)}
@@ -468,7 +471,8 @@ const MEMORY_LABELS = ["Memory 1","Memory 2","Memory 3","Memory 4","Memory 5","M
 const STATE = {
   phase:"BOOT", sector:"FORMATION", speed:0, displaySpeed:0, gear:"N", rpm:0, drs:false,
   playerControl:false, audioReady:false, config:CONFIG,
-  checkpoints:[], archives:{rec01:false,rec02:false}
+  checkpoints:[], archives:{rec01:false,rec02:false},
+  _instinctMusicStarted:false
 };
 const SAVE_KEY="PROJECT_DRIVER_01_SUNDAY";
 const Save={ write(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({phase:STATE.phase,checkpoints:STATE.checkpoints,archives:STATE.archives}))}catch(e){}},
@@ -545,11 +549,13 @@ const Audio_=(()=>{
   async function loadMusic(key,url){ if(!ctx||buffers[key])return !!buffers[key];
     try{const r=await fetch(url);if(!r.ok)return false;const ab=await r.arrayBuffer();buffers[key]=await ctx.decodeAudioData(ab);return true;}catch(e){return false;} }
   const hasMusic=k=>!!buffers[k];
-  let musicSrc=null;
-  function playMusic(key,{loop=true,vol=.5,fade=2.5}={}){ if(!ctx||!buffers[key])return false;stopMusic(.4);
+  let musicSrc=null,musicKey=null;
+  function playMusic(key,{loop=true,vol=.5,fade=2.5}={}){ if(!ctx||!buffers[key])return false;
+    if(musicKey===key && musicSrc){ const t=ctx.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setValueAtTime(musicGain.gain.value,t); musicGain.gain.linearRampToValueAtTime(vol,t+fade); return true; }
+    stopMusic(Math.max(1.1,fade*0.7));
     const s=ctx.createBufferSource();s.buffer=buffers[key];s.loop=loop;s.connect(musicGain);const t=ctx.currentTime;
-    musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(vol,t+fade);s.start();musicSrc=s;return true; }
-  function stopMusic(fade=2){ if(!ctx||!musicSrc)return;const t=ctx.currentTime,s=musicSrc;musicSrc=null;
+    musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(0,t);musicGain.gain.linearRampToValueAtTime(vol,t+fade);s.start();musicSrc=s;musicKey=key;return true; }
+  function stopMusic(fade=2){ if(!ctx||!musicSrc)return;const t=ctx.currentTime,s=musicSrc;musicSrc=null;musicKey=null;
     musicGain.gain.cancelScheduledValues(t);musicGain.gain.setValueAtTime(musicGain.gain.value,t);musicGain.gain.linearRampToValueAtTime(0,t+fade);try{s.stop(t+fade+.1);}catch(e){} }
   return {init,resume,startAmbient,startEngine,setRPM,starter,rev,engineDuck,engineRestore,shutdownTone,beep,beepHi,confirm,click,data,lightTone,warn,loadMusic,hasMusic,playMusic,stopMusic};
 })();
@@ -610,7 +616,7 @@ const Drive=(()=>{
     mark("drs");
     straight(90);                         // DRS zone / final straight
     mark("finish");
-    straight(40);
+    straight(70);                         // extra breathing room for instinct-mode music
     trackLen=segs.length*SEGLEN;
     drsZone={start:milestones.drs,end:milestones.drs+90*SEGLEN};
     segs.forEach(s=>{ const z=s.index*SEGLEN; if(z>=milestones.finish-SEGLEN && z<milestones.finish+3*SEGLEN) s.finish=true; });
@@ -794,6 +800,7 @@ const Drive=(()=>{
     ["#telemetry","#cluster","#corner","#mcBanner","#radio"].forEach(id=>{ const e=$(id); if(e){ e.style.transition="opacity .6s"; e.style.opacity="0"; } });
     if(rival) rival.active=false; rival=null;
     running=false; STATE.playerControl=false; throttle=false;
+    Audio_.stopMusic(0.01);
     Audio_.engineDuck(0.08);
     // blackout in
     const bo=$("#blackout"), bt=$("#blackoutText");
@@ -816,6 +823,7 @@ const Drive=(()=>{
       Audio_.data(); await type(d,t,30); await sleep(t.length>26?520:760);
     }
     await sleep(1300);
+    Audio_.stopMusic(1.3);
     // strip the HUD to essentials + dim the world
     const tel=$("#telemetry"); if(tel){ tel.style.transition="opacity .6s"; tel.style.opacity="0"; }
     STATE._instinct=true; HUD.corner(null);
@@ -854,7 +862,7 @@ const Drive=(()=>{
     (async()=>{
       await runPitStop(num);                 // Phase 3 · puzzle + archive recording
       Audio_.engineRestore();
-      if(Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:.4,fade:3});
+      if(Audio_.hasMusic("music_formation")) Audio_.playMusic("music_formation",{vol:.4,fade:2.2});
       running=true; STATE.playerControl=true; last=performance.now();
       MC("Back on track. Continue.");
     })();
@@ -863,8 +871,7 @@ const Drive=(()=>{
   async function finish(){
     running=false; STATE.playerControl=false; throttle=false;
     HUD.drs(false); HUD.corner(null);
-    if(Audio_.hasMusic("music_final")){ if(!STATE._finalMusic){ STATE._finalMusic=true; Audio_.playMusic("music_final",{vol:.4,fade:3}); } }
-    else Audio_.stopMusic(2.5);
+    if(Audio_.hasMusic("music_drs")) Audio_.stopMusic(2.5);
     // settle
     const settle=setInterval(()=>{ speed*=0.86; HUD.setSpeed(displayKmh());
       Audio_.setRPM(clamp(speed,0.08,1)); if(speed<0.02){clearInterval(settle);speed=0;HUD.setSpeed(0);Audio_.setRPM(0.08);} },60);
@@ -882,6 +889,10 @@ const Drive=(()=>{
       // throttle / speed (ease-out toward cap)
       if(throttle){ speed += (phaseCap-speed)*2.4*dt; }
       else { speed -= speed*1.4*dt; if(speed<0)speed=0; }
+      if(STATE._instinct && !STATE._instinctMusicStarted && throttle && speed>0.04){
+        STATE._instinctMusicStarted=true;
+        if(Audio_.hasMusic("music_drs")) Audio_.playMusic("music_drs",{vol:.55,fade:1.2,loop:true});
+      }
       // DRS boost
       if(STATE._drsArmed && drsZone && pos>=drsZone.start && pos<drsZone.end && throttle){
         speed += (1.0-speed)*1.8*dt;
@@ -903,8 +914,7 @@ const Drive=(()=>{
       if(pos>=trackLen) pos=trackLen-1;
       // rival advance + overtake
       if(rival&&rival.active){ rival.z += 0.62*12000*dt;
-        if(pos > rival.z-1.5*SEGLEN){ rival.active=false; HUD.notify("THE LINE IS YOURS"); Audio_.beepHi();
-          if(!STATE._finalMusic && Audio_.hasMusic("music_final")){ STATE._finalMusic=true; Audio_.playMusic("music_final",{vol:.42,fade:3}); } } }
+        if(pos > rival.z-1.5*SEGLEN){ rival.active=false; HUD.notify("THE LINE IS YOURS"); Audio_.beepHi(); } }
       updateGears(); updateCorner(); checkMilestones();
       HUD.setSpeed(displayKmh());
     }
@@ -1049,6 +1059,7 @@ function waitFor(cond, timeout){ return new Promise(res=>{
 
 async function onFinishReached(){
   await clearStage();
+  if(Audio_.hasMusic("music_final") && !STATE._finalMusic){ STATE._finalMusic=true; Audio_.playMusic("music_final",{vol:.22,fade:2.8,loop:true}); }
   runFinale();                         // Phase 4 · podium → reveal → love letter → shutdown
 }
 
@@ -1308,7 +1319,7 @@ async function simulationCollapse(){
   STATE.phase="COLLAPSE";
   const mods=["#telemetry","#miniCircuit","#cluster","#corner","#mcBanner","#radio"];
   for(const m of mods){ const el=$(m); if(el){ el.style.transition="opacity .4s"; el.style.opacity="0"; } Audio_.data(); await sleep(240); }
-  Audio_.engineDuck(0); Audio_.stopMusic(1.6);
+  Audio_.engineDuck(0);
   ["#road","#cockpit","#atmos","#blur","#haze","#track","#hills","#sky"].forEach(s=>{ const el=$(s); if(el){ el.style.transition="opacity 1.2s"; el.style.opacity="0"; } });
   await sleep(1300);
   if(window.Drive && Drive.halt) Drive.halt();
@@ -1322,7 +1333,6 @@ async function simulationCollapse(){
 async function podium(){
   STATE.phase="PODIUM";
   $("#finaleBg").className="night";
-  if(Audio_.hasMusic("music_final")) Audio_.playMusic("music_final",{vol:.3,fade:4});
   finSet(`<div class="fin-eyebrow">Driver Evaluation · Final Report</div>
     <div class="fin-panel"><div class="ph"><span class="t">Assessment Summary</span><span class="n">RBR // DRIVER 01</span></div>
       <div class="podium-cat" id="pc"></div></div>`);
@@ -1412,17 +1422,24 @@ async function loveLetter(){
   const url = ASSETS.video.love_letter;
   const v = document.createElement("video");
   v.id="loveVideo"; v.setAttribute("playsinline",""); v.controls=false; v.preload="auto"; v.src=url;
+  const wrap=document.createElement("div"); wrap.className="video-wrap"; wrap.appendChild(v);
+  const skipBtn=document.createElement("button"); skipBtn.className="video-skip"; skipBtn.id="skipVideo"; skipBtn.textContent="Skip Video";
+  wrap.appendChild(skipBtn);
+  let shouldSkip=false;
   const ok = await new Promise(res=>{ let done=false;
     const d=()=>{ if(!done){done=true;res(true);} }; const n=()=>{ if(!done){done=true;res(false);} };
-    v.addEventListener("canplay",d); v.addEventListener("error",n);
+    skipBtn.onclick=()=>{ Audio_.click(); shouldSkip=true; try{v.pause();}catch(e){} if(!done){done=true;res(true);} };
+    v.addEventListener("canplay",d); v.addEventListener("error",n); v.addEventListener("ended",d);
     setTimeout(()=>{ if(!done){done=true;res(v.readyState>=2);} },4500); });
 
-  if(ok){
-    const f=$("#finale"); f.classList.add("on"); f.innerHTML=""; f.appendChild(v);
+  const f=$("#finale"); f.classList.add("on"); f.innerHTML="";
+  if(ok && !shouldSkip){
+    f.appendChild(wrap);
     try{ await v.play(); }catch(e){}
     await new Promise(res=>{ v.onended=res; v.addEventListener("error",res); });
-  } else {
+  } else if(!shouldSkip){
     // graceful in-universe fallback until love_letter.mp4 is uploaded
+    f.innerHTML="";
     finSet(`<div class="fin-eyebrow">Archive 003 // Personal</div>
       <div class="archive-photo" style="background:radial-gradient(circle at 50% 40%, #10193a, #05070f)"></div>
       <div class="fin-serif" style="font-style:normal">Final archive · awaiting upload.<br><span style="font-size:.7em;color:var(--dim);font-family:var(--f-mono);letter-spacing:.06em">From my heart to yours</span></div>
