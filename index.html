@@ -1198,8 +1198,8 @@ function memoryMatch(host){
   return new Promise(async resolve=>{
     const imgs=[]; for(let i=1;i<=6;i++){ const url=ASSETS.images["memory_0"+i]; imgs.push({url,ok:await loadImage(url)}); }
     host.innerHTML=`<div class="pit-sub">Match each recovered image to its archive log.</div>
-      <div class="match-wrap"><div class="tray" id="tray"></div><div class="slots" id="slots"></div></div>
-      <div class="pit-sub" id="mstat">0 / 6 synchronized</div>`;
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px"><div class="pit-sub" id="mstat">0 / 6 synchronized</div><button class="pit-btn pit-skip" id="skipMatchBtn">Release Control</button></div>
+      <div class="match-wrap"><div class="tray" id="tray"></div><div class="slots" id="slots"></div></div>`;
     const tray=host.querySelector("#tray"), slotsEl=host.querySelector("#slots"), slotEls=[];
     for(let i=0;i<6;i++){ const s=document.createElement("div"); s.className="slot"; s.dataset.index=i;
       s.innerHTML=`<div class="drop"><span class="ph">ARCHIVE 0${i+1}</span></div>
@@ -1210,6 +1210,12 @@ function memoryMatch(host){
       if(imgs[idx].ok) c.style.backgroundImage=`url('${imgs[idx].url}')`; else c.innerHTML=`<span class="pn">ARCHIVE 0${idx+1}</span>`;
       tray.appendChild(c); cards.push(c); makeDraggable(c); });
     let done=0;
+    const skipMatchBtn=host.querySelector("#skipMatchBtn");
+    if(skipMatchBtn){ skipMatchBtn.addEventListener("click",()=>{ if(done===6)return; done=6;
+      slotEls.forEach(s=>s.classList.add("completed")); cards.forEach(c=>{ c.classList.add("placed"); c.style.visibility="hidden"; });
+      const m=host.querySelector("#mstat"); if(m) m.innerHTML=`<span style="color:var(--ok)">ARCHIVE SYNCHRONIZED — completed</span>`;
+      Audio_.click(); setTimeout(resolve,150); }); }
+
     function slotAt(x,y){ return slotEls.find(s=>{ const r=s.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }); }
     function highlight(x,y){ const s=slotAt(x,y); slotEls.forEach(el=>el.classList.toggle("over", el===s && !el.classList.contains("locked"))); }
     function lock(card,slot){ slot.classList.add("locked"); const drop=slot.querySelector(".drop");
@@ -1244,20 +1250,27 @@ function archivePlayback(container, opts){
       ${stripHtml}
       ${opts.caption ? `<div class="archive-caption">${opts.caption}</div>` : ''}
       <div class="wave" id="wave">${'<i></i>'.repeat(24)}</div>
-      <div id="actrl"></div></div>`;
+      <div id="actrl"></div>
+      <button class="pit-btn" id="skipAudioBtn" style="margin-top:18px">Release Control</button></div>`;
     const ctrl=container.querySelector("#actrl"), wave=container.querySelector("#wave");
-    const cont=()=>{ ctrl.innerHTML=`<button class="pit-btn" id="acont">Continue</button>`;
-      container.querySelector("#acont").onclick=()=>{ Audio_.click(); resolve(); }; };
+    const skipBtn=container.querySelector("#skipAudioBtn");
+    let skipped=false;
+    const finishPlayback=()=>{ if(skipped) return; skipped=true; try{ if(audio){ audio.pause(); } }catch(_){}
+      if(wave) wave.classList.remove("live"); resolve(); };
+    if(skipBtn){ skipBtn.onclick=()=>{ Audio_.click(); finishPlayback(); }; }
+    const cont=()=>{ if(skipped) return; ctrl.innerHTML=`<button class="pit-btn" id="acont">Continue</button>`;
+      const acont=container.querySelector("#acont"); if(acont){ acont.onclick=()=>{ Audio_.click(); finishPlayback(); } }; };
     const aphoto=container.querySelector("#aphoto");
     if(audio){
       ctrl.innerHTML=`<button class="pit-btn" id="aplay">Play Message</button>`;
-      container.querySelector("#aplay").onclick=()=>{ ctrl.innerHTML=""; wave.classList.add("live"); if(aphoto)aphoto.classList.add("zoom");
-        try{ audio.play(); }catch(e){}
-        audio.onended=()=>{ wave.classList.remove("live"); cont(); }; };
+      const aplay=container.querySelector("#aplay"); if(aplay){ aplay.onclick=()=>{ if(skipped) return; ctrl.innerHTML=""; wave.classList.add("live"); if(aphoto)aphoto.classList.add("zoom");
+          try{ audio.play(); }catch(e){}
+          audio.onended=()=>{ wave.classList.remove("live"); cont(); }; } };
     } else {
       ctrl.innerHTML=`<div class="pit-sub">Archive recording · awaiting upload</div>`;
       if(aphoto)aphoto.classList.add("zoom");
-      await sleep(opts.caption?4200:2600); cont();
+      await sleep(opts.caption?4200:2600);
+      if(!skipped) cont();
     }
   });
 }
@@ -1426,7 +1439,7 @@ async function loveLetter(){
   const v = document.createElement("video");
   v.id="loveVideo"; v.setAttribute("playsinline",""); v.controls=false; v.preload="auto"; v.src=url;
   const wrap=document.createElement("div"); wrap.className="video-wrap"; wrap.appendChild(v);
-  const skipBtn=document.createElement("button"); skipBtn.className="video-skip"; skipBtn.id="skipVideo"; skipBtn.textContent="Skip Video";
+  const skipBtn=document.createElement("button"); skipBtn.className="video-skip"; skipBtn.id="skipVideo"; skipBtn.textContent="Release Control";
   wrap.appendChild(skipBtn);
   let shouldSkip=false;
   const ok = await new Promise(res=>{ let done=false;
@@ -1438,8 +1451,15 @@ async function loveLetter(){
   const f=$("#finale"); f.classList.add("on"); f.innerHTML="";
   if(ok && !shouldSkip){
     f.appendChild(wrap);
+    let finished=false;
+    const playbackDone = new Promise(res=>{
+      const done = () => { if(!finished){ finished=true; res(); } };
+      skipBtn.onclick = () => { Audio_.click(); shouldSkip=true; try{ v.pause(); }catch(e){} done(); };
+      v.onended = done;
+      v.addEventListener("error", done);
+    });
     try{ await v.play(); }catch(e){}
-    await new Promise(res=>{ v.onended=res; v.addEventListener("error",res); });
+    await playbackDone;
   } else if(!shouldSkip){
     // graceful in-universe fallback until love_letter.mp4 is uploaded
     f.innerHTML="";
